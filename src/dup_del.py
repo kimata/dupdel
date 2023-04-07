@@ -89,6 +89,7 @@ def print_dup_cand(dup_cand, index, total):
 
     print_diff_text(dup_cand[0]["name"], dup_cand[0]["sm"], 0)
     print_diff_text(dup_cand[1]["name"], dup_cand[1]["sm"], 1)
+    print()
 
 
 def list_dup_cand(dir_path):
@@ -139,7 +140,7 @@ def list_dup_cand(dir_path):
                 print("--------------------------------------------------")
                 print_dup_cand(dup_cand, i + 1, len(file_name_list))
 
-                ans = input("同一？ (y/n/q) ")
+                ans = input("同一？(後者が削除候補) [y/n/q] ")
 
                 if ans.lower() == "y":
                     dup_cand_list.append(dup_cand)
@@ -161,7 +162,7 @@ def exec_delete(dup_cand_list, target_dir_path, trash_dir_path):
         if not os.path.isfile(os.path.join(target_dir_path, dup_cand[1]["name"])):
             continue
         if not process_all:
-            ans = input("\033[0;32m後者を削除しますか？(y/n/a) \033[0m")
+            ans = input("\033[0;32m後者を削除しますか？[y/n/a] \033[0m")
 
         if ans.lower() == "y" or ans.lower() == "a" or process_all:
             shutil.move(
