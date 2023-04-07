@@ -97,7 +97,7 @@ def list_dup_cand(dir_path):
     done_hash = {}
     dup_cand_list = []
     for i, file_name_1 in enumerate(file_name_list):
-        for file_name_2 in file_name_list:
+        for file_name_2 in file_name_list[i:-1]:
             if file_name_1 == file_name_2 or file_name_1 in done_hash:
                 continue
             # NOTE: 一旦，比較対象にしたくない文字を除外して比較
@@ -146,8 +146,8 @@ def list_dup_cand(dir_path):
                 if ans.lower() == "q":
                     return dup_cand_list
 
-                # NOTE: 新しい側のファイルのみチェック済みにする
-                done_hash[file_name_2] = 1
+                # NOTE: 古い側のファイルのみチェック済みにする
+                done_hash[file_name_1] = 1
     return dup_cand_list
 
 
