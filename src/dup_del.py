@@ -4,10 +4,11 @@
 ファイル名が似ているファイルを削除するスクリプトです．
 
 Usage:
-  dup_del.py PATH
+  dup_del.py [--stats] PATH
 
 Options:
-  PATH: チェック対象のフォルダ
+  PATH      チェック対象のフォルダ
+  --stats   フォルダ毎の質問リスト数を表示（デバッグ用）
 """
 
 import difflib
@@ -671,11 +672,90 @@ def handle_interrupt(manager: enlighten.Manager | None = None) -> bool:
         return True
 
 
+def run_stats_mode(dir_path: str) -> None:
+    """フォルダ毎の質問リスト数を表示（デバッグ用）"""
+    print(f"📊 統計モード: {dir_path}")
+    print()
+
+    # ファイル一覧を取得
+    print("📂 ファイル一覧を取得中...")
+    file_path_list = []
+    for root, dirs, files in os.walk(dir_path):
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
+        for name in files:
+            if name.startswith("."):
+                continue
+            path = os.path.join(root, name)
+            if os.path.isfile(path):
+                file_path_list.append(path)
+
+    print(f"   合計: {len(file_path_list)} ファイル")
+    print()
+
+    # ファイル情報を事前計算
+    print("⚙️  ファイル情報を計算中...")
+    file_infos = precompute_file_info(file_path_list, dir_path, manager=None)
+
+    # ディレクトリ毎にグループ化
+    dir_to_infos: dict[str, list[PrecomputedFileInfo]] = {}
+    for info in file_infos:
+        if info.dir_path not in dir_to_infos:
+            dir_to_infos[info.dir_path] = []
+        dir_to_infos[info.dir_path].append(info)
+
+    print(f"   合計: {len(dir_to_infos)} ディレクトリ")
+    print()
+
+    # ディレクトリ毎に重複候補を数える
+    print("🔍 重複候補をカウント中...")
+    results: list[tuple[str, int, int, int]] = []  # (dir, file_count, pairs, candidates)
+
+    for dir_path_key, infos in dir_to_infos.items():
+        if len(infos) < 2:
+            continue
+
+        candidates = 0
+        pairs_checked = 0
+        for i in range(len(infos)):
+            for j in range(i + 1, len(infos)):
+                pairs_checked += 1
+                result = _compare_pair(infos[i], infos[j], MATCH_TH)
+                if result is not None:
+                    candidates += 1
+
+        if candidates > 0:
+            rel_path = os.path.relpath(dir_path_key, dir_path)
+            results.append((rel_path, len(infos), pairs_checked, candidates))
+
+    # 候補数でソート
+    results.sort(key=lambda x: x[3], reverse=True)
+
+    print()
+    print("=" * 80)
+    print(f"{'ディレクトリ':<40} {'ファイル数':>10} {'比較ペア':>10} {'候補数':>10}")
+    print("=" * 80)
+
+    total_candidates = 0
+    for rel_path, file_count, pairs, candidates in results:
+        total_candidates += candidates
+        # 長いパスは省略
+        display_path = rel_path if len(rel_path) <= 38 else "..." + rel_path[-35:]
+        print(f"{display_path:<40} {file_count:>10} {pairs:>10} {candidates:>10}")
+
+    print("=" * 80)
+    print(f"{'合計':<40} {'':<10} {'':<10} {total_candidates:>10}")
+
+
 def main() -> None:
     assert __doc__ is not None
     args = docopt(__doc__)
 
     target_dir_path = args["PATH"]
+
+    # 統計モード
+    if args["--stats"]:
+        run_stats_mode(target_dir_path)
+        return
 
     manager = enlighten.Manager()
 
