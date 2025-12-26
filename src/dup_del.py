@@ -220,6 +220,7 @@ def _compare_pair(
         {
             "path": older.path,
             "name": older.rel_name,
+            "basename": older.name,
             "size": older.size,
             "mtime": older.mtime,
             "index": older.index,
@@ -228,6 +229,7 @@ def _compare_pair(
         {
             "path": newer.path,
             "name": newer.rel_name,
+            "basename": newer.name,
             "size": newer.size,
             "mtime": newer.mtime,
             "index": newer.index,
@@ -372,21 +374,38 @@ def list_file(dir_path: str, manager: enlighten.Manager) -> list[str]:
     return file_path_list
 
 
-def print_diff_text(text: str, sm: difflib.SequenceMatcher, mode: int) -> None:
+def build_diff_text(text: str, sm: difflib.SequenceMatcher, mode: int, max_width: int) -> str:
+    """差分を着色した文字列を構築（表示幅制限付き）"""
+    result = []
+    current_width = 0
+
     for tag, i1, i2, j1, j2 in sm.get_opcodes():
         s = text[i1:i2] if mode == 0 else text[j1:j2]
 
-        if tag == "equal":
-            print(s, end="")
-        elif re.fullmatch(IGNORE_PAT + "+", s):
-            print(f"{COLOR_DIM}{s}{COLOR_RESET}", end="")
-        elif tag == "delete":
-            print(f"{COLOR_DIFF_DELETE}{s}{COLOR_RESET}", end="")
-        elif tag == "replace":
-            print(f"{COLOR_DIFF_REPLACE}{s}{COLOR_RESET}", end="")
-        elif tag == "insert":
-            print(f"{COLOR_DIFF_INSERT}{s}{COLOR_RESET}", end="")
-    print()
+        # この部分を追加すると幅を超えるかチェック
+        for char in s:
+            char_width = 2 if unicodedata.east_asian_width(char) in ("F", "W", "A") else 1
+            if current_width + char_width > max_width - 3:  # "..." の分
+                result.append(f"{COLOR_RESET}...")
+                return "".join(result)
+
+            # 色を適用
+            if tag == "equal":
+                result.append(char)
+            elif re.fullmatch(IGNORE_PAT + "+", char):
+                result.append(f"{COLOR_DIM}{char}{COLOR_RESET}")
+            elif tag == "delete":
+                result.append(f"{COLOR_DIFF_DELETE}{char}{COLOR_RESET}")
+            elif tag == "replace":
+                result.append(f"{COLOR_DIFF_REPLACE}{char}{COLOR_RESET}")
+            elif tag == "insert":
+                result.append(f"{COLOR_DIFF_INSERT}{char}{COLOR_RESET}")
+            else:
+                result.append(char)
+
+            current_width += char_width
+
+    return "".join(result)
 
 
 def truncate_to_width(text: str, max_width: int) -> str:
@@ -420,8 +439,25 @@ def print_dup_cand(dup_cand: DupCand, index: int, total: int) -> None:
     prefix_width = get_visible_width("  📁 古: ")
     max_name_width = term_width - prefix_width - 1
 
-    name_old = truncate_to_width(dup_cand[0]["name"], max_name_width)
-    name_new = truncate_to_width(dup_cand[1]["name"], max_name_width)
+    # ディレクトリ部分を取得（同じディレクトリなので共通）
+    dir_part = os.path.dirname(dup_cand[0]["name"])
+    if dir_part:
+        dir_prefix = dir_part + "/"
+        dir_prefix_width = get_visible_width(dir_prefix)
+        # ディレクトリパスが長すぎる場合は省略
+        max_dir_width = max_name_width // 2
+        if dir_prefix_width > max_dir_width:
+            dir_prefix = truncate_to_width(dir_prefix, max_dir_width)
+            dir_prefix_width = get_visible_width(dir_prefix)
+    else:
+        dir_prefix = ""
+        dir_prefix_width = 0
+
+    # ベースネーム部分を差分着色で表示
+    sm = dup_cand[0]["sm"]
+    basename_max_width = max(20, max_name_width - dir_prefix_width)  # 最低20文字は確保
+    name_old = dir_prefix + build_diff_text(dup_cand[0]["basename"], sm, 0, basename_max_width)
+    name_new = dir_prefix + build_diff_text(dup_cand[1]["basename"], sm, 1, basename_max_width)
 
     print(f"\n  📁 古: {name_old}")
     print(f"  📄 新: {name_new}")
