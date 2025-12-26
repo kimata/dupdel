@@ -7,6 +7,7 @@ import sys
 
 import enlighten
 
+from .cache import cache_pairs_bulk, init_cache_db, is_pair_cached
 from .constants import (
     BLINK_ON,
     COLOR_DIM,
@@ -126,8 +127,17 @@ def handle_interrupt(manager: enlighten.Manager | None = None) -> bool:
         return True
 
 
-def list_dup_cand(dir_path: str, manager: enlighten.Manager) -> list[DupCand]:
-    """重複候補を対話的に選択"""
+def list_dup_cand(
+    dir_path: str, manager: enlighten.Manager
+) -> tuple[list[DupCand], list[tuple[str, str]]]:
+    """重複候補を対話的に選択
+
+    Returns:
+        (削除候補リスト, スキップしたペアのリスト)
+    """
+    # キャッシュDBを初期化
+    init_cache_db()
+
     # ステータスバー（上から順に表示されるよう、下から作成）
     tool_status = manager.status_bar(
         status_format="🔍 dupdel:{fill}{status}{fill}",
@@ -211,6 +221,7 @@ def list_dup_cand(dir_path: str, manager: enlighten.Manager) -> list[DupCand]:
 
     pending_questions: list[DupCand] = []
     dup_cand_list: list[DupCand] = []
+    skipped_pairs: list[tuple[str, str]] = []  # スキップしたペア（キャッシュ候補）
     qa_bar: enlighten.Counter | None = None
 
     def progress_callback(comparisons: int, found: int) -> None:
@@ -232,16 +243,30 @@ def list_dup_cand(dir_path: str, manager: enlighten.Manager) -> list[DupCand]:
         # 最終進捗を表示
         compare_bar.count = total_comparisons
         compare_bar.refresh()
+
+        # キャッシュ済みペアを除外
+        cached_count = 0
+        filtered_questions: list[DupCand] = []
+        for dup_cand in pending_questions:
+            if is_pair_cached(dup_cand[0]["path"], dup_cand[1]["path"]):
+                cached_count += 1
+            else:
+                filtered_questions.append(dup_cand)
+        pending_questions = filtered_questions
+
         question_counter.count = len(pending_questions)
         question_counter.refresh()
 
+        if cached_count > 0:
+            print(f"\n{COLOR_DIM}📦 キャッシュ済み: {cached_count} 件をスキップ{COLOR_RESET}")
+
         if shutdown_event.is_set():
-            return dup_cand_list
+            return dup_cand_list, []  # 中断時はキャッシュしない
 
         # 質問がない場合
         if not pending_questions:
             tool_status.update(status="✨ 重複候補は見つかりませんでした")
-            return dup_cand_list
+            return dup_cand_list, skipped_pairs
 
         # フェーズ2: 質問に回答
         tool_status.update(status="🤔 削除して良いか確認お願いします")
@@ -272,6 +297,8 @@ def list_dup_cand(dir_path: str, manager: enlighten.Manager) -> list[DupCand]:
             elif ans.lower() == "q":
                 break
             else:
+                # 「n」回答時はスキップリストに追加（正常終了時にキャッシュ保存）
+                skipped_pairs.append((dup_cand[0]["path"], dup_cand[1]["path"]))
                 print(f"{COLOR_DIM}⏭️  スキップ{COLOR_RESET}")
 
             print()  # ステータスバーとの間に空行
@@ -294,17 +321,23 @@ def list_dup_cand(dir_path: str, manager: enlighten.Manager) -> list[DupCand]:
             qa_bar.close()
         delete_counter.close()
 
-    return dup_cand_list
+    return dup_cand_list, skipped_pairs
 
 
-def exec_delete(dup_cand_list: list[DupCand], trash_dir_path: str, manager: enlighten.Manager) -> None:
-    """削除を実行"""
+def exec_delete(dup_cand_list: list[DupCand], trash_dir_path: str, manager: enlighten.Manager) -> bool:
+    """削除を実行
+
+    Returns:
+        True: すべて正常に処理（「n」の応答なし）
+        False: 「n」の応答があった
+    """
     if not dup_cand_list:
         print(f"\n{COLOR_DIM}📭 削除候補がありません{COLOR_RESET}")
-        return
+        return True  # 削除候補なしは正常終了
 
     os.makedirs(trash_dir_path, exist_ok=True)
     process_all = False
+    has_rejection = False  # 「n」応答があったか
 
     progress = manager.counter(
         total=len(dup_cand_list),
@@ -333,6 +366,8 @@ def exec_delete(dup_cand_list: list[DupCand], trash_dir_path: str, manager: enli
             if ans == "a":
                 process_all = True
                 print(f"{COLOR_WARNING}⚡ 以降すべて削除します{COLOR_RESET}")
+            elif ans == "n":
+                has_rejection = True
 
         if should_delete:
             dst_path = os.path.join(trash_dir_path, os.path.basename(src_path))
@@ -343,6 +378,8 @@ def exec_delete(dup_cand_list: list[DupCand], trash_dir_path: str, manager: enli
     progress.close()
     print(f"\n{'─' * 50}")
     print(f"{COLOR_SUCCESS}🎉 完了: {deleted_count} 件のファイルを削除しました{COLOR_RESET}")
+
+    return not has_rejection
 
 
 def run_stats_mode(dir_path: str) -> None:
@@ -429,9 +466,11 @@ def run_stats_mode(dir_path: str) -> None:
 def run_interactive(target_dir_path: str) -> None:
     """対話モードで実行"""
     manager = enlighten.Manager()
+    skipped_pairs: list[tuple[str, str]] = []
+    should_save_cache = False
 
     try:
-        dup_cand_list = list_dup_cand(target_dir_path, manager)
+        dup_cand_list, skipped_pairs = list_dup_cand(target_dir_path, manager)
 
         if shutdown_event.is_set():
             print(f"\n{COLOR_WARNING}⏹️  中断しました{COLOR_RESET}")
@@ -441,13 +480,22 @@ def run_interactive(target_dir_path: str) -> None:
             print(f"\n{COLOR_WARNING}{'─' * 50}{COLOR_RESET}")
             print(f"{COLOR_WARNING}⚠️  削除の最終確認{COLOR_RESET}")
             print(f"{COLOR_WARNING}{'─' * 50}{COLOR_RESET}")
-            exec_delete(dup_cand_list, TRASH_DIR, manager)
+            all_confirmed = exec_delete(dup_cand_list, TRASH_DIR, manager)
+            should_save_cache = all_confirmed
         else:
             print(f"\n{COLOR_DIM}✨ 重複候補は見つかりませんでした{COLOR_RESET}")
+            should_save_cache = True  # 削除候補なしは正常終了
 
     except KeyboardInterrupt:
         if handle_interrupt(manager):
             print(f"\n{COLOR_WARNING}⏹️  中断しました{COLOR_RESET}")
             sys.exit(130)
     finally:
+        # キャッシュ保存（正常終了時のみ）
+        if should_save_cache and skipped_pairs:
+            saved_count = cache_pairs_bulk(skipped_pairs)
+            print(f"{COLOR_DIM}📦 キャッシュに {saved_count} 件を保存しました{COLOR_RESET}")
+        elif skipped_pairs:
+            print(f"{COLOR_WARNING}⚠️  キャッシュは保存されませんでした{COLOR_RESET}")
+
         manager.stop()

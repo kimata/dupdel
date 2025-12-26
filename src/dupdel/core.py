@@ -92,8 +92,32 @@ def expand_to_digit_group(name: str, start: int, end: int) -> tuple[int, int]:
     return start, end
 
 
+def find_digit_group_in_range(name: str, start: int, end: int) -> tuple[int, int] | None:
+    """指定範囲内の数字を含む数字グループを見つける"""
+    # 範囲内で最初の数字を見つける
+    digit_pos = -1
+    for i in range(start, end):
+        if i < len(name) and name[i].isdigit():
+            digit_pos = i
+            break
+
+    if digit_pos == -1:
+        return None
+
+    # その位置から数字グループを拡張
+    group_start = digit_pos
+    group_end = digit_pos + 1
+
+    while group_start > 0 and name[group_start - 1].isdigit():
+        group_start -= 1
+    while group_end < len(name) and name[group_end].isdigit():
+        group_end += 1
+
+    return group_start, group_end
+
+
 def has_episode_number_diff(name1: str, name2: str) -> bool:
-    """話数のような数字差分があるかチェック（例：第1話 vs 第2話、#01 vs #02）"""
+    """話数のような数字差分があるかチェック（例：第1話 vs 第2話、#01 vs #02、#11 vs #1）"""
     sm = difflib.SequenceMatcher(None, name1, name2, autojunk=False)
     for tag, i1, i2, j1, j2 in sm.get_opcodes():
         if tag == "replace":
@@ -102,29 +126,58 @@ def has_episode_number_diff(name1: str, name2: str) -> bool:
             if not any(c.isdigit() for c in name2[j1:j2]):
                 continue
 
-            exp_start1, exp_end1 = expand_to_digit_group(name1, i1, i2)
-            exp_start2, exp_end2 = expand_to_digit_group(name2, j1, j2)
+            # 差分範囲内の数字を含む数字グループを見つける
+            group1 = find_digit_group_in_range(name1, i1, i2)
+            group2 = find_digit_group_in_range(name2, j1, j2)
 
-            exp_s1 = name1[exp_start1:exp_end1]
+            if group1 is None or group2 is None:
+                continue
+
+            exp_s1 = name1[group1[0] : group1[1]]
+            exp_s2 = name2[group2[0] : group2[1]]
+
+            # 差分を含む数字グループ全体が2桁以下の場合のみエピソード番号と判定
+            if len(exp_s1) <= 2 and len(exp_s2) <= 2:
+                return True
+
+        elif tag == "delete":
+            # 削除された部分に数字が含まれる場合（例: #11 → #1）
+            if not any(c.isdigit() for c in name1[i1:i2]):
+                continue
+
+            group1 = find_digit_group_in_range(name1, i1, i2)
+            if group1 is None:
+                continue
+
+            exp_s1 = name1[group1[0] : group1[1]]
+
+            # 対応する位置の name2 側の数字グループも確認
+            exp_start2, exp_end2 = expand_to_digit_group(name2, j1, j1)
             exp_s2 = name2[exp_start2:exp_end2]
 
-            if exp_s1.isdigit() and exp_s2.isdigit():
-                before_digits = 0
-                for c in reversed(name1[:exp_start1]):
-                    if c.isdigit():
-                        before_digits += 1
-                    else:
-                        break
-
-                after_digits = 0
-                for c in name1[exp_end1:]:
-                    if c.isdigit():
-                        after_digits += 1
-                    else:
-                        break
-
-                if before_digits <= 1 and after_digits <= 1:
+            if exp_s2 == "" or exp_s2.isdigit():
+                if len(exp_s1) <= 2 and len(exp_s2) <= 2:
                     return True
+
+        elif tag == "insert":
+            # 挿入された部分に数字が含まれる場合（例: #1 → #11）
+            if not any(c.isdigit() for c in name2[j1:j2]):
+                continue
+
+            group2 = find_digit_group_in_range(name2, j1, j2)
+            if group2 is None:
+                continue
+
+            exp_s2 = name2[group2[0] : group2[1]]
+
+            # 対応する位置の name1 側の数字グループも確認
+            exp_start1, exp_end1 = expand_to_digit_group(name1, i1, i1)
+            exp_s1 = name1[exp_start1:exp_end1]
+
+            if exp_s1 == "" or exp_s1.isdigit():
+                if len(exp_s1) <= 2 and len(exp_s2) <= 2:
+                    return True
+
     return False
 
 
