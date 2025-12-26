@@ -22,6 +22,38 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Any
 
+import enlighten
+from docopt import docopt
+
+# 定数
+SIZE_TH = 200 * 1024 * 1024
+MATCH_TH = 0.85
+IGNORE_PAT = r"[\d_ 　🈑🈞字再前後\[\]]"
+
+TRASH_DIR = "/storage/.recycle"
+
+# ANSI256 カラー（黒背景に合う落ち着いた色）
+COLOR_TITLE = "\033[38;5;67m"  # スチールブルー
+COLOR_SUCCESS = "\033[38;5;72m"  # シアングリーン
+COLOR_WARNING = "\033[38;5;180m"  # ライトサーモン
+COLOR_ERROR = "\033[38;5;167m"  # インディアンレッド
+COLOR_DIM = "\033[38;5;242m"  # ミディアムグレー
+COLOR_RESET = "\033[0m"
+BLINK_ON = "\033[5m"  # 点滅開始
+
+# 差分表示用カラー
+COLOR_DIFF_DELETE = "\033[38;5;174m"  # ライトピンク
+COLOR_DIFF_REPLACE = "\033[38;5;114m"  # ペールグリーン
+COLOR_DIFF_INSERT = "\033[38;5;110m"  # ライトスカイブルー
+
+# 型エイリアス
+FileInfo = dict[str, Any]
+DupCand = list[FileInfo]
+
+# グローバル停止フラグ
+shutdown_event = threading.Event()
+
+
 def get_term_width() -> int:
     return shutil.get_terminal_size().columns
 
@@ -60,35 +92,6 @@ def blinking_input(prompt: str = "") -> str:
 
     # 入力を取得（ユーザーの入力が _ を上書きする）
     return input()
-
-import enlighten
-from docopt import docopt
-
-SIZE_TH = 200 * 1024 * 1024
-MATCH_TH = 0.85
-IGNORE_PAT = r"[\d_ 　🈑🈞字再前後\[\]]"
-
-TRASH_DIR = "/storage/.recycle"
-
-# ANSI256 カラー（黒背景に合う落ち着いた色）
-COLOR_TITLE = "\033[38;5;67m"  # スチールブルー
-COLOR_SUCCESS = "\033[38;5;72m"  # シアングリーン
-COLOR_WARNING = "\033[38;5;180m"  # ライトサーモン
-COLOR_ERROR = "\033[38;5;167m"  # インディアンレッド
-COLOR_DIM = "\033[38;5;242m"  # ミディアムグレー
-COLOR_RESET = "\033[0m"
-BLINK_ON = "\033[5m"  # 点滅開始
-
-# 差分表示用カラー
-COLOR_DIFF_DELETE = "\033[38;5;174m"  # ライトピンク
-COLOR_DIFF_REPLACE = "\033[38;5;114m"  # ペールグリーン
-COLOR_DIFF_INSERT = "\033[38;5;110m"  # ライトスカイブルー
-
-FileInfo = dict[str, Any]
-DupCand = list[FileInfo]
-
-# グローバル停止フラグ
-shutdown_event = threading.Event()
 
 
 @dataclass
