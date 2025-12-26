@@ -18,6 +18,7 @@ import shutil
 import sys
 import threading
 import unicodedata
+from collections import Counter
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Any
@@ -108,25 +109,14 @@ class PrecomputedFileInfo:
     index: int
 
 
-def is_in_same_or_child_dir(dir1: str, dir2: str) -> bool:
-    """2つのディレクトリが同一または親子関係にあるかチェック"""
-    if dir1 == dir2:
-        return True
-    # 親子関係のチェック（dir1がdir2の親、またはその逆）
-    dir1_with_sep = dir1 + os.sep
-    dir2_with_sep = dir2 + os.sep
-    return dir2.startswith(dir1_with_sep) or dir1.startswith(dir2_with_sep)
-
-
 def count_valid_comparisons(file_infos: list[PrecomputedFileInfo]) -> int:
-    """有効な比較ペア数をカウント（同じディレクトリまたは親子関係のみ）"""
-    count = 0
-    n = len(file_infos)
-    for i in range(n):
-        for j in range(i + 1, n):
-            if is_in_same_or_child_dir(file_infos[i].dir_path, file_infos[j].dir_path):
-                count += 1
-    return count
+    """有効な比較ペア数をカウント（同じディレクトリのみ）"""
+    # ディレクトリごとのファイル数をカウント
+    dir_counts = Counter(info.dir_path for info in file_infos)
+
+    # 各ディレクトリ内の比較ペア数を合計: n*(n-1)/2
+    total = sum(count * (count - 1) // 2 for count in dir_counts.values())
+    return total
 
 
 def precompute_file_info(
@@ -256,8 +246,8 @@ def _worker_compare_range(args: tuple[int, int, float]) -> tuple[list[DupCand], 
         info1 = _worker_file_infos[i]
         for j in range(i + 1, _worker_n):
             info2 = _worker_file_infos[j]
-            # ディレクトリ関係チェックをここで行い、有効な比較のみカウント
-            if not is_in_same_or_child_dir(info1.dir_path, info2.dir_path):
+            # 同じディレクトリのファイルのみ比較
+            if info1.dir_path != info2.dir_path:
                 continue
             valid_comparison_count += 1
             result = _compare_pair(info1, info2, match_th)
