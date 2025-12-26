@@ -162,7 +162,7 @@ def list_dup_cand(
         counter.close()
         tool_status.close()
         dir_status.close()
-        return []
+        return [], []
 
     counter.desc = "📂 ソート中"
     counter.refresh()
@@ -187,7 +187,7 @@ def list_dup_cand(
     if total_files < 2:
         tool_status.close()
         dir_status.close()
-        return []
+        return [], []
 
     # 有効な比較ペア数をカウント
     tool_status.update(status="比較対象をカウント中...")
@@ -197,7 +197,7 @@ def list_dup_cand(
         tool_status.update(status="✨ 比較対象がありませんでした")
         tool_status.close()
         dir_status.close()
-        return []
+        return [], []
 
     tool_status.update(status="重複ファイルを調べています...")
 
