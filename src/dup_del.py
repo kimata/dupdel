@@ -75,6 +75,17 @@ def get_visible_width(text: str) -> int:
     return width
 
 
+def pad_to_width(text: str, width: int, align: str = "left") -> str:
+    """文字列を指定した表示幅にパディング（全角文字対応）"""
+    current_width = get_visible_width(text)
+    padding = width - current_width
+    if padding <= 0:
+        return text
+    if align == "right":
+        return " " * padding + text
+    return text + " " * padding
+
+
 def blinking_input(prompt: str = "") -> str:
     """点滅するアンダースコアカーソル付きで入力を待つ"""
     # プロンプトと点滅する _ を表示
@@ -740,20 +751,25 @@ def run_stats_mode(dir_path: str) -> None:
     # 候補数でソート
     results.sort(key=lambda x: x[3], reverse=True)
 
+    col_width = 40
     print()
     print("=" * 80)
-    print(f"{'ディレクトリ':<40} {'ファイル数':>10} {'比較ペア':>10} {'候補数':>10}")
+    print(f"{pad_to_width('ディレクトリ', col_width)} {'ファイル数':>10} {'比較ペア':>10} {'候補数':>10}")
     print("=" * 80)
 
     total_candidates = 0
     for rel_path, file_count, pairs, candidates in results:
         total_candidates += candidates
-        # 長いパスは省略
-        display_path = rel_path if len(rel_path) <= 38 else "..." + rel_path[-35:]
-        print(f"{display_path:<40} {file_count:>10} {pairs:>10} {candidates:>10}")
+        # 長いパスは表示幅で省略
+        display_path = rel_path
+        while get_visible_width(display_path) > col_width - 3:
+            display_path = display_path[1:]
+        if display_path != rel_path:
+            display_path = "..." + display_path
+        print(f"{pad_to_width(display_path, col_width)} {file_count:>10} {pairs:>10} {candidates:>10}")
 
     print("=" * 80)
-    print(f"{'合計':<40} {'':<10} {'':<10} {total_candidates:>10}")
+    print(f"{pad_to_width('合計', col_width)} {'':>10} {'':>10} {total_candidates:>10}")
 
 
 def main() -> None:
