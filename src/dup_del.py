@@ -331,12 +331,18 @@ def list_file(dir_path: str, manager: enlighten.Manager) -> list[str]:
     )
 
     file_path_list = []
-    for root, _, files in os.walk(dir_path):
+    for root, dirs, files in os.walk(dir_path):
+        # 隠しディレクトリをスキップ
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
+
         if shutdown_event.is_set():
             break
         for name in files:
             if shutdown_event.is_set():
                 break
+            # 隠しファイルをスキップ
+            if name.startswith("."):
+                continue
             path = os.path.join(root, name)
             try:
                 if os.path.isfile(path):
