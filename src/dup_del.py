@@ -389,6 +389,18 @@ def print_diff_text(text: str, sm: difflib.SequenceMatcher, mode: int) -> None:
     print()
 
 
+def truncate_to_width(text: str, max_width: int) -> str:
+    """文字列を指定した表示幅に収まるように末尾を省略"""
+    if get_visible_width(text) <= max_width:
+        return text
+
+    # 末尾から削って収まるようにする
+    result = text
+    while get_visible_width(result) > max_width - 3:  # "..." の分
+        result = result[:-1]
+    return result + "..."
+
+
 def print_dup_cand(dup_cand: DupCand, index: int, total: int) -> None:
     ratio = round(dup_cand[0]["sm"].ratio() * 100)
     ratio_color = COLOR_SUCCESS if ratio >= 95 else COLOR_WARNING if ratio >= 90 else COLOR_DIM
@@ -403,10 +415,16 @@ def print_dup_cand(dup_cand: DupCand, index: int, total: int) -> None:
     size_color = COLOR_ERROR if size_diff > SIZE_TH else COLOR_DIM
     print(f"        {size_color}📐 サイズ差: {size_diff / 1024 / 1024:.1f} MB ({size_ratio:.1f}%){COLOR_RESET}")
 
-    print(f"\n  📁 古: ", end="")
-    print_diff_text(dup_cand[0]["name"], dup_cand[0]["sm"], 0)
-    print(f"  📄 新: ", end="")
-    print_diff_text(dup_cand[1]["name"], dup_cand[1]["sm"], 1)
+    # ファイル名を表示幅に収める（ステータスバーに上書きされないように）
+    term_width = get_term_width()
+    prefix_width = get_visible_width("  📁 古: ")
+    max_name_width = term_width - prefix_width - 1
+
+    name_old = truncate_to_width(dup_cand[0]["name"], max_name_width)
+    name_new = truncate_to_width(dup_cand[1]["name"], max_name_width)
+
+    print(f"\n  📁 古: {name_old}")
+    print(f"  📄 新: {name_new}")
 
 
 def has_zengo_diff(name1: str, name2: str) -> bool:
