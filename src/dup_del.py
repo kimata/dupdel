@@ -710,9 +710,18 @@ def run_stats_mode(dir_path: str) -> None:
     print("🔍 重複候補をカウント中...")
     results: list[tuple[str, int, int, int]] = []  # (dir, file_count, pairs, candidates)
 
-    for dir_path_key, infos in dir_to_infos.items():
+    # ファイル数が多い順にソート（進捗がわかりやすいように）
+    sorted_dirs = sorted(dir_to_infos.items(), key=lambda x: len(x[1]), reverse=True)
+    processed = 0
+
+    for dir_path_key, infos in sorted_dirs:
+        processed += 1
         if len(infos) < 2:
             continue
+
+        rel_path = os.path.relpath(dir_path_key, dir_path)
+        pairs_total = len(infos) * (len(infos) - 1) // 2
+        print(f"   [{processed}/{len(dir_to_infos)}] {rel_path} ({len(infos)} files, {pairs_total} pairs)...", end="", flush=True)
 
         candidates = 0
         pairs_checked = 0
@@ -723,8 +732,9 @@ def run_stats_mode(dir_path: str) -> None:
                 if result is not None:
                     candidates += 1
 
+        print(f" → {candidates} 候補")
+
         if candidates > 0:
-            rel_path = os.path.relpath(dir_path_key, dir_path)
             results.append((rel_path, len(infos), pairs_checked, candidates))
 
     # 候補数でソート
