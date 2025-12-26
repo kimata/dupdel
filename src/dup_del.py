@@ -99,12 +99,34 @@ class PrecomputedFileInfo:
     """事前計算済みファイル情報"""
 
     path: str
+    dir_path: str  # ファイルのディレクトリパス
     name: str  # ファイル名
     rel_name: str  # 相対パス
     normalized: str  # 正規化済み名前（IGNORE_PAT 除去）
     size: int
     mtime: float
     index: int
+
+
+def is_in_same_or_child_dir(dir1: str, dir2: str) -> bool:
+    """2つのディレクトリが同一または親子関係にあるかチェック"""
+    if dir1 == dir2:
+        return True
+    # 親子関係のチェック（dir1がdir2の親、またはその逆）
+    dir1_with_sep = dir1 + os.sep
+    dir2_with_sep = dir2 + os.sep
+    return dir2.startswith(dir1_with_sep) or dir1.startswith(dir2_with_sep)
+
+
+def count_valid_comparisons(file_infos: list[PrecomputedFileInfo]) -> int:
+    """有効な比較ペア数をカウント（同じディレクトリまたは親子関係のみ）"""
+    count = 0
+    n = len(file_infos)
+    for i in range(n):
+        for j in range(i + 1, n):
+            if is_in_same_or_child_dir(file_infos[i].dir_path, file_infos[j].dir_path):
+                count += 1
+    return count
 
 
 def precompute_file_info(
@@ -130,6 +152,7 @@ def precompute_file_info(
             result.append(
                 PrecomputedFileInfo(
                     path=path,
+                    dir_path=os.path.dirname(path),
                     name=name,
                     rel_name=os.path.relpath(path, dir_path),
                     normalized=re.sub(IGNORE_PAT, "", name),
@@ -227,18 +250,21 @@ def _worker_compare_range(args: tuple[int, int, float]) -> tuple[list[DupCand], 
     """ワーカー: 指定範囲のファイルを全後続ファイルと比較"""
     start_idx, end_idx, match_th = args
     results: list[DupCand] = []
-    comparison_count = 0
+    valid_comparison_count = 0
 
     for i in range(start_idx, end_idx):
         info1 = _worker_file_infos[i]
         for j in range(i + 1, _worker_n):
-            comparison_count += 1
             info2 = _worker_file_infos[j]
+            # ディレクトリ関係チェックをここで行い、有効な比較のみカウント
+            if not is_in_same_or_child_dir(info1.dir_path, info2.dir_path):
+                continue
+            valid_comparison_count += 1
             result = _compare_pair(info1, info2, match_th)
             if result is not None:
                 results.append(result)
 
-    return results, comparison_count
+    return results, valid_comparison_count
 
 
 def find_dup_candidates_parallel(
@@ -457,12 +483,22 @@ def list_dup_cand(dir_path: str, manager: enlighten.Manager) -> list[DupCand]:
     file_infos = precompute_file_info(file_path_list, dir_path, manager)
 
     total_files = len(file_infos)
-    total_comparisons = total_files * (total_files - 1) // 2
-
-    if total_comparisons == 0:
+    if total_files < 2:
         tool_status.close()
         dir_status.close()
         return []
+
+    # 有効な比較ペア数をカウント（同じディレクトリまたは親子関係のみ）
+    tool_status.update(status="比較対象をカウント中...")
+    total_comparisons = count_valid_comparisons(file_infos)
+
+    if total_comparisons == 0:
+        tool_status.update(status="✨ 比較対象がありませんでした")
+        tool_status.close()
+        dir_status.close()
+        return []
+
+    tool_status.update(status="重複ファイルを調べています...")
 
     # ステータスライン（下から順に積み上げ: 下に来るものから作成）
     compare_bar = manager.counter(
