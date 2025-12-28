@@ -43,7 +43,7 @@ jobs:
         run: uv sync --locked --no-editable
 
       - name: Run type check (pyright)
-        run: uv run pyright src/
+        run: uv run python -m pyright src/
 
       - name: Run type check (mypy)
         run: uv run mypy src/
