@@ -130,7 +130,7 @@ def has_episode_number_diff(name1: str, name2: str) -> bool:
             group1 = find_digit_group_in_range(name1, i1, i2)
             group2 = find_digit_group_in_range(name2, j1, j2)
 
-            if group1 is None or group2 is None:
+            if group1 is None or group2 is None:  # pragma: no cover (数字存在確認後なので到達不可)
                 continue
 
             exp_s1 = name1[group1[0] : group1[1]]
@@ -146,7 +146,7 @@ def has_episode_number_diff(name1: str, name2: str) -> bool:
                 continue
 
             group1 = find_digit_group_in_range(name1, i1, i2)
-            if group1 is None:
+            if group1 is None:  # pragma: no cover (数字存在確認後なので到達不可)
                 continue
 
             exp_s1 = name1[group1[0] : group1[1]]
@@ -165,7 +165,7 @@ def has_episode_number_diff(name1: str, name2: str) -> bool:
                 continue
 
             group2 = find_digit_group_in_range(name2, j1, j2)
-            if group2 is None:
+            if group2 is None:  # pragma: no cover (数字存在確認後なので到達不可)
                 continue
 
             exp_s2 = name2[group2[0] : group2[1]]
@@ -249,14 +249,14 @@ _worker_file_infos: list[PrecomputedFileInfo] = []
 _worker_n: int = 0
 
 
-def _init_worker(file_infos: list[PrecomputedFileInfo]) -> None:
+def _init_worker(file_infos: list[PrecomputedFileInfo]) -> None:  # pragma: no cover
     """ワーカープロセスの初期化（データを一度だけ転送）"""
     global _worker_file_infos, _worker_n
     _worker_file_infos = file_infos
     _worker_n = len(file_infos)
 
 
-def _worker_compare_range(args: tuple[int, int, float]) -> tuple[list[DupCand], int]:
+def _worker_compare_range(args: tuple[int, int, float]) -> tuple[list[DupCand], int]:  # pragma: no cover
     """ワーカー: 指定範囲のファイルを全後続ファイルと比較"""
     start_idx, end_idx, match_th = args
     results: list[DupCand] = []
@@ -309,7 +309,7 @@ def find_dup_candidates_parallel(
             current_start = i + 1
             current_count = 0
 
-    if not tasks:
+    if not tasks:  # pragma: no cover (n>=2でforループが必ず実行されるため到達不可)
         tasks.append((0, n - 1, MATCH_TH))
 
     all_results: list[DupCand] = []

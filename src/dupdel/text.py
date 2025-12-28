@@ -84,7 +84,7 @@ def build_diff_text(text: str, sm: difflib.SequenceMatcher, mode: int, max_width
                 result.append(f"{COLOR_DIFF_REPLACE}{char}{COLOR_RESET}")
             elif tag == "insert":
                 result.append(f"{COLOR_DIFF_INSERT}{char}{COLOR_RESET}")
-            else:
+            else:  # pragma: no cover
                 result.append(char)
 
             current_width += char_width
