@@ -61,7 +61,6 @@ jobs:
       - name: Generate index.html
         if: always()
         run: |
-          mkdir -p reports
           cat > reports/index.html << 'EOF'
           <!DOCTYPE html>
           <html lang="ja">
