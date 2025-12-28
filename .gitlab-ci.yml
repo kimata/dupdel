@@ -1,5 +1,9 @@
 image: gitlab.green-rabbit.net:5050/kimata/local-ubuntu:250706_043ea01d
 
+variables:
+    UV_CACHE_DIR: .uv-cache
+    PYRIGHT_PYTHON_FORCE_VERSION: latest
+
 stages:
     - pre-test
     - test
@@ -12,11 +16,6 @@ test-prepare:
 
     script:
         - uv sync --locked --no-editable
-
-    artifacts:
-        paths:
-            - $UV_CACHE_DIR
-        expire_in: 1 hour
 
     cache:
         - key:
@@ -32,14 +31,15 @@ test-typecheck:
         - test-prepare
 
     script:
-        - uv run pytest --numprocesses=auto --no-cov --junit-xml=tests/evidence/junit-report.xml tests/test_typecheck.py
+        - uv run python -m pyright
+        - uv run mypy src/
 
-    artifacts:
-        when: always
-        paths:
-            - tests/evidence/**
-        reports:
-            junit: tests/evidence/junit-report.xml
+    cache:
+        - key:
+              files:
+                  - uv.lock
+          paths:
+              - ${UV_CACHE_DIR}
 
 test-normal:
     stage: test
