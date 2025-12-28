@@ -1,4 +1,4 @@
-# dupdel
+# 🗑️ dupdel
 
 [![Test Status](https://github.com/kimata/dupdel/actions/workflows/test.yml/badge.svg)](https://github.com/kimata/dupdel/actions/workflows/test.yml)
 [![Test Report](https://img.shields.io/badge/test-report-blue)](https://kimata.github.io/dupdel/report.html)
@@ -6,19 +6,19 @@
 
 類似したファイル名を持つ重複ファイルの削除を支援するツール
 
-## 概要
+## 📋 概要
 
 同じディレクトリ内にある、名前が似ているファイルを検出し、対話的に削除できます。
 録画ファイルなど、同一番組の重複ファイルを整理するのに便利です。
 
 ### 主な特徴
 
-- **類似ファイル名検出** - ファイル名の類似度を計算して重複候補を抽出
-- **対話的な削除確認** - 1件ずつ確認しながら削除候補を選択
-- **差分ハイライト** - ファイル名の差異をカラーで表示
-- **並列処理** - 大量のファイルも高速に比較
-- **安全な削除** - ファイルはゴミ箱に移動（完全削除ではない）
-- **中断・再開対応** - Ctrl-C で安全に中断可能
+- 🔍 **類似ファイル名検出** - ファイル名の類似度を計算して重複候補を抽出
+- 💬 **対話的な削除確認** - 1件ずつ確認しながら削除候補を選択
+- 🎨 **差分ハイライト** - ファイル名の差異をカラーで表示
+- ⚡ **並列処理** - 大量のファイルも高速に比較
+- 🛡️ **安全な削除** - ファイルはゴミ箱に移動（完全削除ではない）
+- ⏸️ **中断・再開対応** - Ctrl-C で安全に中断可能
 
 ### 検出ロジック
 
@@ -30,11 +30,11 @@
 - 話数の違い（第1話 vs 第2話など）は除外
 - 「前編」「後編」の違いは除外
 
-## 動作環境
+## 🖥️ 動作環境
 
 Python 3.10 以上が必要です。
 
-## セットアップ
+## 🚀 セットアップ
 
 ### uv を使用（推奨）
 
@@ -46,7 +46,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv sync
 ```
 
-## 実行方法
+## 💻 実行方法
 
 ```bash
 # 基本的な使い方
@@ -85,7 +85,7 @@ uv run python src/app.py --stats /path/to/directory
 
 削除されたファイルは `/storage/.recycle` に移動されます（完全削除ではありません）。
 
-## コード構造
+## 📁 コード構造
 
 ```
 src/
@@ -98,7 +98,7 @@ src/
     └── ui.py           # UI/インタラクション
 ```
 
-## ライセンス
+## 📝 ライセンス
 
 Apache License Version 2.0
 
@@ -106,6 +106,6 @@ Apache License Version 2.0
 
 <div align="center">
 
-[Issue 報告](https://github.com/kimata/dupdel/issues)
+[🐛 Issue 報告](https://github.com/kimata/dupdel/issues)
 
 </div>
