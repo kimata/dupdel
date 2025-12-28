@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TZ: Asia/Tokyo
+      PYRIGHT_PYTHON_FORCE_VERSION: latest
 
     steps:
       - uses: actions/checkout@v4
