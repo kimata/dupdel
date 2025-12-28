@@ -249,14 +249,14 @@ _worker_file_infos: list[PrecomputedFileInfo] = []
 _worker_n: int = 0
 
 
-def _init_worker(file_infos: list[PrecomputedFileInfo]) -> None:  # pragma: no cover
+def _init_worker(file_infos: list[PrecomputedFileInfo]) -> None:  # pragma: no cover (別プロセスで実行)
     """ワーカープロセスの初期化（データを一度だけ転送）"""
     global _worker_file_infos, _worker_n
     _worker_file_infos = file_infos
     _worker_n = len(file_infos)
 
 
-def _worker_compare_range(args: tuple[int, int, float]) -> tuple[list[DupCand], int]:  # pragma: no cover
+def _worker_compare_range(args: tuple[int, int, float]) -> tuple[list[DupCand], int]:  # pragma: no cover (別プロセスで実行)
     """ワーカー: 指定範囲のファイルを全後続ファイルと比較"""
     start_idx, end_idx, match_th = args
     results: list[DupCand] = []
