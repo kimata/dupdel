@@ -1,5 +1,9 @@
 # dupdel
 
+[![Test Status](https://github.com/kimata/dupdel/actions/workflows/test.yml/badge.svg)](https://github.com/kimata/dupdel/actions/workflows/test.yml)
+[![Test Report](https://img.shields.io/badge/test-report-blue)](https://kimata.github.io/dupdel/report.html)
+[![Coverage Report](https://img.shields.io/badge/coverage-report-blue)](https://kimata.github.io/dupdel/coverage/)
+
 類似したファイル名を持つ重複ファイルの削除を支援するツール
 
 ## 概要
