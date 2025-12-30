@@ -1,6 +1,6 @@
 # 🗑️ dupdel
 
-[![Test Status](https://github.com/kimata/dupdel/actions/workflows/test.yml/badge.svg)](https://github.com/kimata/dupdel/actions/workflows/test.yml)
+[![Test Status](https://github.com/kimata/dupdel/actions/workflows/test.yaml/badge.svg)](https://github.com/kimata/dupdel/actions/workflows/test.yaml)
 [![Test Report](https://img.shields.io/badge/Test_Report-report.html-blue)](https://kimata.github.io/dupdel/report.html)
 [![Coverage Status](https://coveralls.io/repos/github/kimata/dupdel/badge.svg?branch=main)](https://coveralls.io/github/kimata/dupdel?branch=main)
 
