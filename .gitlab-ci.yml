@@ -53,14 +53,12 @@ test-normal:
         - export LC_ALL=ja_JP.UTF-8
         - export TERM=xterm-256color
 
-        - uv run pytest --numprocesses=auto --junit-xml=tests/evidence/junit-report.xml tests/test_core.py tests/test_cache.py
+        - uv run pytest --numprocesses=auto --junit-xml=reports/junit-report.xml tests/test_core.py tests/test_cache.py
 
     artifacts:
         when: always
-        paths:
-            - tests/evidence/**
         reports:
-            junit: tests/evidence/junit-report.xml
+            junit: reports/junit-report.xml
 
 renovate:
     stage: renovate
