@@ -40,7 +40,7 @@ from .text import (
 )
 
 
-def blinking_input(prompt: str = "") -> str:
+def _blinking_input(prompt: str = "") -> str:
     """点滅するアンダースコアカーソル付きで入力を待つ"""
     # プロンプトと点滅する _ を表示
     sys.stdout.write(f"{prompt}{BLINK_ON}_{COLOR_RESET}")
@@ -61,7 +61,7 @@ def blinking_input(prompt: str = "") -> str:
     return input()
 
 
-def print_dup_cand(dup_cand: DupCand, index: int, total: int) -> None:
+def _print_dup_cand(dup_cand: DupCand, index: int, total: int) -> None:
     """重複候補を表示"""
     ratio = round(dup_cand[0]["sm"].ratio() * 100)
     ratio_color = (
@@ -113,13 +113,13 @@ def print_dup_cand(dup_cand: DupCand, index: int, total: int) -> None:
     print(f"  📄 新: {name_new}")
 
 
-def handle_interrupt(manager: enlighten.Manager | None = None) -> bool:
+def _handle_interrupt(manager: enlighten.Manager | None = None) -> bool:
     """Ctrl-C が押された時の処理。終了する場合は True を返す"""
     try:
         sys.stdout.write("\n\n")  # ステータスバーとの間に空行
         sys.stdout.flush()
         ans = (
-            blinking_input(f"{COLOR_WARNING}⏸️  中断しますか？ [y/N]: {COLOR_RESET}")
+            _blinking_input(f"{COLOR_WARNING}⏸️  中断しますか？ [y/N]: {COLOR_RESET}")
             .strip()
             .lower()
         )
@@ -139,7 +139,7 @@ def handle_interrupt(manager: enlighten.Manager | None = None) -> bool:
         return True
 
 
-def list_dup_cand(
+def _list_dup_cand(
     dir_path: str, manager: enlighten.Manager
 ) -> tuple[list[DupCand], list[tuple[str, str]]]:
     """重複候補を対話的に選択
@@ -294,10 +294,10 @@ def list_dup_cand(
             if shutdown_event.is_set():
                 break
 
-            print_dup_cand(dup_cand, i, len(pending_questions))
+            _print_dup_cand(dup_cand, i, len(pending_questions))
 
             print()  # ステータスバーとの間に空行
-            ans = blinking_input(f"{COLOR_TITLE}🤔 同一？(後者が削除候補) [y/n/q]: {COLOR_RESET}")
+            ans = _blinking_input(f"{COLOR_TITLE}🤔 同一？(後者が削除候補) [y/n/q]: {COLOR_RESET}")
 
             assert qa_bar is not None
             qa_bar.update()
@@ -316,7 +316,7 @@ def list_dup_cand(
             print()  # ステータスバーとの間に空行
 
     except KeyboardInterrupt:
-        if handle_interrupt(manager):
+        if _handle_interrupt(manager):
             shutdown_event.set()
         else:
             raise
@@ -336,7 +336,7 @@ def list_dup_cand(
     return dup_cand_list, skipped_pairs
 
 
-def exec_delete(
+def _exec_delete(
     dup_cand_list: list[DupCand], trash_dir_path: str, manager: enlighten.Manager
 ) -> bool:
     """削除を実行
@@ -363,7 +363,7 @@ def exec_delete(
 
     for dup_cand in dup_cand_list:
         progress.update()
-        print_dup_cand(dup_cand, progress.count, len(dup_cand_list))
+        _print_dup_cand(dup_cand, progress.count, len(dup_cand_list))
 
         src_path = dup_cand[1]["path"]
 
@@ -375,7 +375,7 @@ def exec_delete(
         if not process_all:
             sys.stdout.write("\n")  # ステータスバーとの間に空行
             sys.stdout.flush()
-            ans = blinking_input(
+            ans = _blinking_input(
                 f"{COLOR_ERROR}🗑️  後者を削除しますか？[y/n/a]: {COLOR_RESET}"
             ).lower()
             should_delete = ans in ("y", "a")
@@ -494,7 +494,7 @@ def run_interactive(target_dir_path: str) -> None:
     should_save_cache = False
 
     try:
-        dup_cand_list, skipped_pairs = list_dup_cand(target_dir_path, manager)
+        dup_cand_list, skipped_pairs = _list_dup_cand(target_dir_path, manager)
 
         if shutdown_event.is_set():
             print(f"\n{COLOR_WARNING}⏹️  中断しました{COLOR_RESET}")
@@ -504,14 +504,14 @@ def run_interactive(target_dir_path: str) -> None:
             print(f"\n{COLOR_WARNING}{'─' * 50}{COLOR_RESET}")
             print(f"{COLOR_WARNING}⚠️  削除の最終確認{COLOR_RESET}")
             print(f"{COLOR_WARNING}{'─' * 50}{COLOR_RESET}")
-            all_confirmed = exec_delete(dup_cand_list, TRASH_DIR, manager)
+            all_confirmed = _exec_delete(dup_cand_list, TRASH_DIR, manager)
             should_save_cache = all_confirmed
         else:
             print(f"\n{COLOR_DIM}✨ 重複候補は見つかりませんでした{COLOR_RESET}")
             should_save_cache = True  # 削除候補なしは正常終了
 
     except KeyboardInterrupt:
-        if handle_interrupt(manager):
+        if _handle_interrupt(manager):
             print(f"\n{COLOR_WARNING}⏹️  中断しました{COLOR_RESET}")
             sys.exit(130)
     finally:

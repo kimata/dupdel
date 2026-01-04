@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from typing import Iterator
 
 # キャッシュDBのパス（アプリケーションディレクトリに保存）
-CACHE_DB_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "cache.db")
+_CACHE_DB_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "cache.db")
 
 
 def _normalize_path(path: str) -> str:
@@ -23,7 +23,7 @@ def _get_pair_key(path1: str, path2: str) -> tuple[str, str]:
 @contextmanager
 def _get_connection() -> Iterator[sqlite3.Connection]:
     """データベース接続を取得"""
-    db_path = os.path.abspath(CACHE_DB_PATH)
+    db_path = os.path.abspath(_CACHE_DB_PATH)
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
     conn = sqlite3.connect(db_path)
     try:
@@ -59,7 +59,7 @@ def is_pair_cached(path1: str, path2: str) -> bool:
         return cursor.fetchone() is not None
 
 
-def cache_pair(path1: str, path2: str) -> None:
+def _cache_pair(path1: str, path2: str) -> None:
     """ペアをキャッシュに追加"""
     key = _get_pair_key(path1, path2)
     with _get_connection() as conn:
@@ -84,7 +84,7 @@ def cache_pairs_bulk(pairs: list[tuple[str, str]]) -> int:
     return len(keys)
 
 
-def get_cached_count() -> int:
+def _get_cached_count() -> int:
     """キャッシュ済みペア数を取得"""
     with _get_connection() as conn:
         cursor = conn.execute("SELECT COUNT(*) FROM skipped_pairs")
@@ -92,7 +92,7 @@ def get_cached_count() -> int:
         return result[0] if result else 0
 
 
-def clear_cache() -> None:
+def _clear_cache() -> None:
     """キャッシュをクリア"""
     with _get_connection() as conn:
         conn.execute("DELETE FROM skipped_pairs")

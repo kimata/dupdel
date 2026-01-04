@@ -71,7 +71,7 @@ def precompute_file_info(
     return result
 
 
-def has_zengo_diff(name1: str, name2: str) -> bool:
+def _has_zengo_diff(name1: str, name2: str) -> bool:
     """「前」と「後」の差分があるかチェック"""
     sm = difflib.SequenceMatcher(None, name1, name2)
     for tag, i1, i2, j1, j2 in sm.get_opcodes():
@@ -83,7 +83,7 @@ def has_zengo_diff(name1: str, name2: str) -> bool:
     return False
 
 
-def expand_to_digit_group(name: str, start: int, end: int) -> tuple[int, int]:
+def _expand_to_digit_group(name: str, start: int, end: int) -> tuple[int, int]:
     """差分位置を数字グループ全体に拡張"""
     while start > 0 and name[start - 1].isdigit():
         start -= 1
@@ -92,7 +92,7 @@ def expand_to_digit_group(name: str, start: int, end: int) -> tuple[int, int]:
     return start, end
 
 
-def find_digit_group_in_range(
+def _find_digit_group_in_range(
     name: str, start: int, end: int
 ) -> tuple[int, int] | None:
     """指定範囲内の数字を含む数字グループを見つける"""
@@ -118,7 +118,7 @@ def find_digit_group_in_range(
     return group_start, group_end
 
 
-def has_episode_number_diff(name1: str, name2: str) -> bool:
+def _has_episode_number_diff(name1: str, name2: str) -> bool:
     """話数のような数字差分があるかチェック（例：第1話 vs 第2話、#01 vs #02、#11 vs #1）"""
     sm = difflib.SequenceMatcher(None, name1, name2, autojunk=False)
     for tag, i1, i2, j1, j2 in sm.get_opcodes():
@@ -129,8 +129,8 @@ def has_episode_number_diff(name1: str, name2: str) -> bool:
                 continue
 
             # 差分範囲内の数字を含む数字グループを見つける
-            group1 = find_digit_group_in_range(name1, i1, i2)
-            group2 = find_digit_group_in_range(name2, j1, j2)
+            group1 = _find_digit_group_in_range(name1, i1, i2)
+            group2 = _find_digit_group_in_range(name2, j1, j2)
 
             if group1 is None or group2 is None:  # pragma: no cover (数字存在確認後なので到達不可)
                 continue
@@ -147,14 +147,14 @@ def has_episode_number_diff(name1: str, name2: str) -> bool:
             if not any(c.isdigit() for c in name1[i1:i2]):
                 continue
 
-            group1 = find_digit_group_in_range(name1, i1, i2)
+            group1 = _find_digit_group_in_range(name1, i1, i2)
             if group1 is None:  # pragma: no cover (数字存在確認後なので到達不可)
                 continue
 
             exp_s1 = name1[group1[0] : group1[1]]
 
             # 対応する位置の name2 側の数字グループも確認
-            exp_start2, exp_end2 = expand_to_digit_group(name2, j1, j1)
+            exp_start2, exp_end2 = _expand_to_digit_group(name2, j1, j1)
             exp_s2 = name2[exp_start2:exp_end2]
 
             if exp_s2 == "" or exp_s2.isdigit():
@@ -166,14 +166,14 @@ def has_episode_number_diff(name1: str, name2: str) -> bool:
             if not any(c.isdigit() for c in name2[j1:j2]):
                 continue
 
-            group2 = find_digit_group_in_range(name2, j1, j2)
+            group2 = _find_digit_group_in_range(name2, j1, j2)
             if group2 is None:  # pragma: no cover (数字存在確認後なので到達不可)
                 continue
 
             exp_s2 = name2[group2[0] : group2[1]]
 
             # 対応する位置の name1 側の数字グループも確認
-            exp_start1, exp_end1 = expand_to_digit_group(name1, i1, i1)
+            exp_start1, exp_end1 = _expand_to_digit_group(name1, i1, i1)
             exp_s1 = name1[exp_start1:exp_end1]
 
             if exp_s1 == "" or exp_s1.isdigit():
@@ -202,11 +202,11 @@ def _compare_pair(
         return None
 
     # 前後チェック
-    if has_zengo_diff(info1.name, info2.name):
+    if _has_zengo_diff(info1.name, info2.name):
         return None
 
     # 話数チェック
-    if has_episode_number_diff(info1.name, info2.name):
+    if _has_episode_number_diff(info1.name, info2.name):
         return None
 
     # サイズ差チェック
@@ -344,7 +344,7 @@ def find_dup_candidates_parallel(
     return all_results
 
 
-def get_mtime_safe(path: str) -> float:
+def _get_mtime_safe(path: str) -> float:
     """ファイルの更新時刻を取得（エラー時は0を返す）"""
     try:
         return os.path.getmtime(path)
@@ -384,4 +384,4 @@ def list_files(
 
 def sort_files_by_mtime(file_path_list: list[str]) -> list[str]:
     """ファイルリストを更新時刻でソート"""
-    return sorted(file_path_list, key=get_mtime_safe)
+    return sorted(file_path_list, key=_get_mtime_safe)

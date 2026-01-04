@@ -8,11 +8,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from dupdel.ui import (
-    blinking_input,
-    exec_delete,
-    handle_interrupt,
-    list_dup_cand,
-    print_dup_cand,
+    _blinking_input,
+    _exec_delete,
+    _handle_interrupt,
+    _list_dup_cand,
+    _print_dup_cand,
     run_interactive,
     run_stats_mode,
 )
@@ -24,13 +24,13 @@ class TestBlinkingInput:
     def test_basic_input(self):
         """基本的な入力"""
         with patch("builtins.input", return_value="y"):
-            result = blinking_input("prompt: ")
+            result = _blinking_input("prompt: ")
             assert result == "y"
 
     def test_empty_prompt(self):
         """空のプロンプト"""
         with patch("builtins.input", return_value="test"):
-            result = blinking_input("")
+            result = _blinking_input("")
             assert result == "test"
 
 
@@ -60,7 +60,7 @@ class TestPrintDupCand:
                 "sm": sm,
             },
         ]
-        print_dup_cand(dup_cand, 1, 10)
+        _print_dup_cand(dup_cand, 1, 10)
         captured = capsys.readouterr()
         assert "類似度" in captured.out
         assert "サイズ差" in captured.out
@@ -88,7 +88,7 @@ class TestPrintDupCand:
                 "sm": sm,
             },
         ]
-        print_dup_cand(dup_cand, 1, 10)
+        _print_dup_cand(dup_cand, 1, 10)
         captured = capsys.readouterr()
         assert "subdir" in captured.out
 
@@ -115,7 +115,7 @@ class TestPrintDupCand:
                 "sm": sm,
             },
         ]
-        print_dup_cand(dup_cand, 1, 10)
+        _print_dup_cand(dup_cand, 1, 10)
         captured = capsys.readouterr()
         assert "MB" in captured.out
 
@@ -145,7 +145,7 @@ class TestPrintDupCand:
                     "sm": sm,
                 },
             ]
-            print_dup_cand(dup_cand, 1, 10)
+            _print_dup_cand(dup_cand, 1, 10)
             captured = capsys.readouterr()
             # 省略記号が含まれていることを確認
             assert "..." in captured.out or "file" in captured.out
@@ -156,8 +156,8 @@ class TestHandleInterrupt:
 
     def test_continue(self):
         """継続を選択"""
-        with patch("dupdel.ui.blinking_input", return_value="n"):
-            result = handle_interrupt()
+        with patch("dupdel.ui._blinking_input", return_value="n"):
+            result = _handle_interrupt()
             assert result is False
 
     def test_exit(self):
@@ -165,8 +165,8 @@ class TestHandleInterrupt:
         from dupdel.constants import shutdown_event
 
         shutdown_event.clear()
-        with patch("dupdel.ui.blinking_input", return_value="y"):
-            result = handle_interrupt()
+        with patch("dupdel.ui._blinking_input", return_value="y"):
+            result = _handle_interrupt()
             assert result is True
             shutdown_event.clear()
 
@@ -175,8 +175,8 @@ class TestHandleInterrupt:
         from dupdel.constants import shutdown_event
 
         shutdown_event.clear()
-        with patch("dupdel.ui.blinking_input", side_effect=KeyboardInterrupt):
-            result = handle_interrupt()
+        with patch("dupdel.ui._blinking_input", side_effect=KeyboardInterrupt):
+            result = _handle_interrupt()
             assert result is True
             shutdown_event.clear()
 
@@ -185,8 +185,8 @@ class TestHandleInterrupt:
         from dupdel.constants import shutdown_event
 
         shutdown_event.clear()
-        with patch("dupdel.ui.blinking_input", side_effect=EOFError):
-            result = handle_interrupt()
+        with patch("dupdel.ui._blinking_input", side_effect=EOFError):
+            result = _handle_interrupt()
             assert result is True
             shutdown_event.clear()
 
@@ -196,8 +196,8 @@ class TestHandleInterrupt:
 
         shutdown_event.clear()
         manager = MagicMock()
-        with patch("dupdel.ui.blinking_input", return_value="y"):
-            result = handle_interrupt(manager)
+        with patch("dupdel.ui._blinking_input", return_value="y"):
+            result = _handle_interrupt(manager)
             assert result is True
             manager.stop.assert_called_once()
             shutdown_event.clear()
@@ -208,8 +208,8 @@ class TestHandleInterrupt:
 
         shutdown_event.clear()
         manager = MagicMock()
-        with patch("dupdel.ui.blinking_input", side_effect=KeyboardInterrupt):
-            result = handle_interrupt(manager)
+        with patch("dupdel.ui._blinking_input", side_effect=KeyboardInterrupt):
+            result = _handle_interrupt(manager)
             assert result is True
             manager.stop.assert_called_once()
             shutdown_event.clear()
@@ -222,7 +222,7 @@ class TestExecDelete:
         """空のリスト"""
         manager = MagicMock()
         manager.counter.return_value = MagicMock()
-        result = exec_delete([], "/tmp/trash", manager)
+        result = _exec_delete([], "/tmp/trash", manager)
         assert result is True
         captured = capsys.readouterr()
         assert "削除候補がありません" in captured.out
@@ -264,8 +264,8 @@ class TestExecDelete:
             counter.count = 0
             manager.counter.return_value = counter
 
-            with patch("dupdel.ui.blinking_input", return_value="y"):
-                result = exec_delete(dup_cand_list, trash_dir, manager)
+            with patch("dupdel.ui._blinking_input", return_value="y"):
+                result = _exec_delete(dup_cand_list, trash_dir, manager)
                 assert result is True
                 assert not os.path.exists(test_file)
                 assert os.path.exists(os.path.join(trash_dir, "test.ts"))
@@ -307,8 +307,8 @@ class TestExecDelete:
             counter.count = 0
             manager.counter.return_value = counter
 
-            with patch("dupdel.ui.blinking_input", return_value="n"):
-                result = exec_delete(dup_cand_list, trash_dir, manager)
+            with patch("dupdel.ui._blinking_input", return_value="n"):
+                result = _exec_delete(dup_cand_list, trash_dir, manager)
                 assert result is False
                 assert os.path.exists(test_file)
 
@@ -372,8 +372,8 @@ class TestExecDelete:
             counter.count = 0
             manager.counter.return_value = counter
 
-            with patch("dupdel.ui.blinking_input", return_value="a"):
-                result = exec_delete(dup_cand_list, trash_dir, manager)
+            with patch("dupdel.ui._blinking_input", return_value="a"):
+                result = _exec_delete(dup_cand_list, trash_dir, manager)
                 assert result is True
 
     def test_file_not_found(self, capsys):
@@ -407,7 +407,7 @@ class TestExecDelete:
         counter.count = 0
         manager.counter.return_value = counter
 
-        result = exec_delete(dup_cand_list, "/tmp/trash", manager)
+        result = _exec_delete(dup_cand_list, "/tmp/trash", manager)
         captured = capsys.readouterr()
         assert "ファイルが見つかりません" in captured.out
 
@@ -424,7 +424,7 @@ class TestListDupCand:
             manager.status_bar.return_value = status_bar
             manager.counter.return_value = counter
 
-            result, skipped = list_dup_cand(tmpdir, manager)
+            result, skipped = _list_dup_cand(tmpdir, manager)
             assert result == []
             assert skipped == []
 
@@ -441,7 +441,7 @@ class TestListDupCand:
             manager.status_bar.return_value = status_bar
             manager.counter.return_value = counter
 
-            result, skipped = list_dup_cand(tmpdir, manager)
+            result, skipped = _list_dup_cand(tmpdir, manager)
             assert result == []
             assert skipped == []
 
@@ -462,7 +462,7 @@ class TestListDupCand:
 
             shutdown_event.set()
             try:
-                result, skipped = list_dup_cand(tmpdir, manager)
+                result, skipped = _list_dup_cand(tmpdir, manager)
                 assert result == []
                 assert skipped == []
             finally:
@@ -484,8 +484,8 @@ class TestListDupCand:
             manager.status_bar.return_value = status_bar
             manager.counter.return_value = counter
 
-            with patch("dupdel.ui.blinking_input", return_value="y"):
-                result, skipped = list_dup_cand(tmpdir, manager)
+            with patch("dupdel.ui._blinking_input", return_value="y"):
+                result, skipped = _list_dup_cand(tmpdir, manager)
                 assert len(result) == 1
 
     def test_with_similar_files_no(self):
@@ -504,8 +504,8 @@ class TestListDupCand:
             manager.status_bar.return_value = status_bar
             manager.counter.return_value = counter
 
-            with patch("dupdel.ui.blinking_input", return_value="n"):
-                result, skipped = list_dup_cand(tmpdir, manager)
+            with patch("dupdel.ui._blinking_input", return_value="n"):
+                result, skipped = _list_dup_cand(tmpdir, manager)
                 assert len(result) == 0
                 assert len(skipped) == 1
 
@@ -525,8 +525,8 @@ class TestListDupCand:
             manager.status_bar.return_value = status_bar
             manager.counter.return_value = counter
 
-            with patch("dupdel.ui.blinking_input", return_value="q"):
-                result, skipped = list_dup_cand(tmpdir, manager)
+            with patch("dupdel.ui._blinking_input", return_value="q"):
+                result, skipped = _list_dup_cand(tmpdir, manager)
                 assert len(result) == 0
 
     def test_no_valid_comparisons(self):
@@ -548,7 +548,7 @@ class TestListDupCand:
             manager.status_bar.return_value = status_bar
             manager.counter.return_value = counter
 
-            result, skipped = list_dup_cand(tmpdir, manager)
+            result, skipped = _list_dup_cand(tmpdir, manager)
             assert result == []
             assert skipped == []
 
@@ -571,7 +571,7 @@ class TestListDupCand:
             manager.counter.return_value = counter
 
             with patch("dupdel.ui.is_pair_cached", return_value=True):
-                result, skipped = list_dup_cand(tmpdir, manager)
+                result, skipped = _list_dup_cand(tmpdir, manager)
                 assert len(result) == 0
 
     def test_shutdown_during_question_loop(self):
@@ -601,8 +601,10 @@ class TestListDupCand:
                 return "y"
 
             try:
-                with patch("dupdel.ui.blinking_input", side_effect=input_with_shutdown):
-                    result, skipped = list_dup_cand(tmpdir, manager)
+                with patch(
+                    "dupdel.ui._blinking_input", side_effect=input_with_shutdown
+                ):
+                    result, skipped = _list_dup_cand(tmpdir, manager)
                     # shutdown後は残りの質問がスキップされる
             finally:
                 shutdown_event.clear()
@@ -631,10 +633,10 @@ class TestListDupCand:
                     raise KeyboardInterrupt
                 return "q"
 
-            with patch("dupdel.ui.blinking_input", side_effect=input_with_interrupt):
-                with patch("dupdel.ui.handle_interrupt", return_value=False):
+            with patch("dupdel.ui._blinking_input", side_effect=input_with_interrupt):
+                with patch("dupdel.ui._handle_interrupt", return_value=False):
                     with pytest.raises(KeyboardInterrupt):
-                        list_dup_cand(tmpdir, manager)
+                        _list_dup_cand(tmpdir, manager)
 
     def test_keyboard_interrupt_exit(self):
         """KeyboardInterruptで終了を選択"""
@@ -656,9 +658,9 @@ class TestListDupCand:
 
             shutdown_event.clear()
             try:
-                with patch("dupdel.ui.blinking_input", side_effect=KeyboardInterrupt):
-                    with patch("dupdel.ui.handle_interrupt", return_value=True):
-                        result, skipped = list_dup_cand(tmpdir, manager)
+                with patch("dupdel.ui._blinking_input", side_effect=KeyboardInterrupt):
+                    with patch("dupdel.ui._handle_interrupt", return_value=True):
+                        result, skipped = _list_dup_cand(tmpdir, manager)
                         assert shutdown_event.is_set()
             finally:
                 shutdown_event.clear()
@@ -689,7 +691,7 @@ class TestListDupCand:
                 with patch(
                     "dupdel.ui.is_pair_cached", side_effect=is_cached_with_shutdown
                 ):
-                    result, skipped = list_dup_cand(tmpdir, manager)
+                    result, skipped = _list_dup_cand(tmpdir, manager)
                     assert result == []
                     assert skipped == []
             finally:
@@ -733,8 +735,8 @@ class TestListDupCand:
 
             manager.counter.side_effect = create_counter
 
-            with patch("dupdel.ui.blinking_input", return_value="y"):
-                result, skipped = list_dup_cand(tmpdir, manager)
+            with patch("dupdel.ui._blinking_input", return_value="y"):
+                result, skipped = _list_dup_cand(tmpdir, manager)
                 assert len(result) == 1
 
 
@@ -817,8 +819,8 @@ class TestRunInteractive:
     def test_keyboard_interrupt(self):
         """KeyboardInterrupt"""
         with tempfile.TemporaryDirectory() as tmpdir:
-            with patch("dupdel.ui.list_dup_cand", side_effect=KeyboardInterrupt):
-                with patch("dupdel.ui.handle_interrupt", return_value=True):
+            with patch("dupdel.ui._list_dup_cand", side_effect=KeyboardInterrupt):
+                with patch("dupdel.ui._handle_interrupt", return_value=True):
                     with pytest.raises(SystemExit) as exc_info:
                         run_interactive(tmpdir)
                     assert exc_info.value.code == 130
@@ -830,7 +832,7 @@ class TestRunInteractive:
         with tempfile.TemporaryDirectory() as tmpdir:
             shutdown_event.set()
             try:
-                with patch("dupdel.ui.list_dup_cand", return_value=([], [])):
+                with patch("dupdel.ui._list_dup_cand", return_value=([], [])):
                     run_interactive(tmpdir)
                 captured = capsys.readouterr()
                 assert "中断しました" in captured.out
@@ -870,8 +872,8 @@ class TestRunInteractive:
                 },
             ]
 
-            with patch("dupdel.ui.list_dup_cand", return_value=([dup_cand], [])):
-                with patch("dupdel.ui.exec_delete", return_value=True):
+            with patch("dupdel.ui._list_dup_cand", return_value=([dup_cand], [])):
+                with patch("dupdel.ui._exec_delete", return_value=True):
                     run_interactive(tmpdir)
             captured = capsys.readouterr()
             assert "削除の最終確認" in captured.out
@@ -884,7 +886,7 @@ class TestRunInteractive:
         with tempfile.TemporaryDirectory() as tmpdir:
             skipped = [("/path/file1", "/path/file2")]
 
-            with patch("dupdel.ui.list_dup_cand", return_value=([], skipped)):
+            with patch("dupdel.ui._list_dup_cand", return_value=([], skipped)):
                 with patch("dupdel.ui.cache_pairs_bulk", return_value=1) as mock_cache:
                     run_interactive(tmpdir)
                     mock_cache.assert_called_once_with(skipped)
@@ -925,8 +927,8 @@ class TestRunInteractive:
             ]
             skipped = [("/path/file1", "/path/file2")]
 
-            with patch("dupdel.ui.list_dup_cand", return_value=([dup_cand], skipped)):
-                with patch("dupdel.ui.exec_delete", return_value=False):
+            with patch("dupdel.ui._list_dup_cand", return_value=([dup_cand], skipped)):
+                with patch("dupdel.ui._exec_delete", return_value=False):
                     run_interactive(tmpdir)
             captured = capsys.readouterr()
             assert "キャッシュは保存されませんでした" in captured.out
