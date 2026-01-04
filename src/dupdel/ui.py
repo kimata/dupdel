@@ -64,7 +64,9 @@ def blinking_input(prompt: str = "") -> str:
 def print_dup_cand(dup_cand: DupCand, index: int, total: int) -> None:
     """重複候補を表示"""
     ratio = round(dup_cand[0]["sm"].ratio() * 100)
-    ratio_color = COLOR_SUCCESS if ratio >= 95 else COLOR_WARNING if ratio >= 90 else COLOR_DIM
+    ratio_color = (
+        COLOR_SUCCESS if ratio >= 95 else COLOR_WARNING if ratio >= 90 else COLOR_DIM
+    )
 
     print(f"\n{'─' * get_term_width()}")
     print(f"[{index:3d}/{total:3d}] {ratio_color}📊 類似度: {ratio}%{COLOR_RESET}")
@@ -74,7 +76,9 @@ def print_dup_cand(dup_cand: DupCand, index: int, total: int) -> None:
     size_ratio = 100 * size_diff / max_size if max_size > 0 else 0
 
     size_color = COLOR_ERROR if size_diff > SIZE_TH else COLOR_DIM
-    print(f"        {size_color}📐 サイズ差: {size_diff / 1024 / 1024:.1f} MB ({size_ratio:.1f}%){COLOR_RESET}")
+    print(
+        f"        {size_color}📐 サイズ差: {size_diff / 1024 / 1024:.1f} MB ({size_ratio:.1f}%){COLOR_RESET}"
+    )
 
     # ファイル名を表示幅に収める（ステータスバーに上書きされないように）
     term_width = get_term_width()
@@ -98,8 +102,12 @@ def print_dup_cand(dup_cand: DupCand, index: int, total: int) -> None:
     # ベースネーム部分を差分着色で表示
     sm = dup_cand[0]["sm"]
     basename_max_width = max(20, max_name_width - dir_prefix_width)  # 最低20文字は確保
-    name_old = dir_prefix + build_diff_text(dup_cand[0]["basename"], sm, 0, basename_max_width)
-    name_new = dir_prefix + build_diff_text(dup_cand[1]["basename"], sm, 1, basename_max_width)
+    name_old = dir_prefix + build_diff_text(
+        dup_cand[0]["basename"], sm, 0, basename_max_width
+    )
+    name_new = dir_prefix + build_diff_text(
+        dup_cand[1]["basename"], sm, 1, basename_max_width
+    )
 
     print(f"\n  📁 古: {name_old}")
     print(f"  📄 新: {name_new}")
@@ -110,7 +118,11 @@ def handle_interrupt(manager: enlighten.Manager | None = None) -> bool:
     try:
         sys.stdout.write("\n\n")  # ステータスバーとの間に空行
         sys.stdout.flush()
-        ans = blinking_input(f"{COLOR_WARNING}⏸️  中断しますか？ [y/N]: {COLOR_RESET}").strip().lower()
+        ans = (
+            blinking_input(f"{COLOR_WARNING}⏸️  中断しますか？ [y/N]: {COLOR_RESET}")
+            .strip()
+            .lower()
+        )
         if ans == "y":
             print(f"{COLOR_DIM}👋 終了処理中...{COLOR_RESET}")
             shutdown_event.set()
@@ -324,7 +336,9 @@ def list_dup_cand(
     return dup_cand_list, skipped_pairs
 
 
-def exec_delete(dup_cand_list: list[DupCand], trash_dir_path: str, manager: enlighten.Manager) -> bool:
+def exec_delete(
+    dup_cand_list: list[DupCand], trash_dir_path: str, manager: enlighten.Manager
+) -> bool:
     """削除を実行
 
     Returns:
@@ -361,7 +375,9 @@ def exec_delete(dup_cand_list: list[DupCand], trash_dir_path: str, manager: enli
         if not process_all:
             sys.stdout.write("\n")  # ステータスバーとの間に空行
             sys.stdout.flush()
-            ans = blinking_input(f"{COLOR_ERROR}🗑️  後者を削除しますか？[y/n/a]: {COLOR_RESET}").lower()
+            ans = blinking_input(
+                f"{COLOR_ERROR}🗑️  後者を削除しますか？[y/n/a]: {COLOR_RESET}"
+            ).lower()
             should_delete = ans in ("y", "a")
             if ans == "a":
                 process_all = True
@@ -410,7 +426,9 @@ def run_stats_mode(dir_path: str) -> None:
 
     # ディレクトリ毎に重複候補を数える
     print("🔍 重複候補をカウント中...")
-    results: list[tuple[str, int, int, int]] = []  # (dir, file_count, pairs, candidates)
+    results: list[
+        tuple[str, int, int, int]
+    ] = []  # (dir, file_count, pairs, candidates)
 
     # ファイル数が多い順にソート（進捗がわかりやすいように）
     sorted_dirs = sorted(dir_to_infos.items(), key=lambda x: len(x[1]), reverse=True)
@@ -423,7 +441,11 @@ def run_stats_mode(dir_path: str) -> None:
 
         rel_path = os.path.relpath(dir_path_key, dir_path)
         pairs_total = len(infos) * (len(infos) - 1) // 2
-        print(f"   [{processed}/{len(dir_to_infos)}] {rel_path} ({len(infos)} files, {pairs_total} pairs)...", end="", flush=True)
+        print(
+            f"   [{processed}/{len(dir_to_infos)}] {rel_path} ({len(infos)} files, {pairs_total} pairs)...",
+            end="",
+            flush=True,
+        )
 
         candidates = 0
         pairs_checked = 0
@@ -457,7 +479,9 @@ def run_stats_mode(dir_path: str) -> None:
             display_path = display_path[1:]
         if display_path != rel_path:
             display_path = "..." + display_path
-        print(f"{pad_to_width(display_path, col_width)} {file_count:>10} {pairs:>10} {candidates:>10}")
+        print(
+            f"{pad_to_width(display_path, col_width)} {file_count:>10} {pairs:>10} {candidates:>10}"
+        )
 
     print("=" * 80)
     print(f"{pad_to_width('合計', col_width)} {'':>10} {'':>10} {total_candidates:>10}")

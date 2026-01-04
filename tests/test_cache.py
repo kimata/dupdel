@@ -46,14 +46,20 @@ class TestCacheDb:
 
         cache_module.cache_pair("/path/to/file1.ts", "/path/to/file2.ts")
 
-        assert cache_module.is_pair_cached("/path/to/file1.ts", "/path/to/file2.ts") is True
+        assert (
+            cache_module.is_pair_cached("/path/to/file1.ts", "/path/to/file2.ts")
+            is True
+        )
 
     def test_is_pair_cached_negative(self, temp_cache_db):
         """キャッシュ済みペアの確認（存在しない）"""
         cache_module.init_cache_db()
         cache_module.clear_cache()
 
-        assert cache_module.is_pair_cached("/path/to/file1.ts", "/path/to/file2.ts") is False
+        assert (
+            cache_module.is_pair_cached("/path/to/file1.ts", "/path/to/file2.ts")
+            is False
+        )
 
     def test_is_pair_cached_reverse_order(self, temp_cache_db):
         """逆順でもキャッシュ済みと判定される"""
@@ -63,7 +69,10 @@ class TestCacheDb:
         cache_module.cache_pair("/path/to/file1.ts", "/path/to/file2.ts")
 
         # 逆順でも検出できる
-        assert cache_module.is_pair_cached("/path/to/file2.ts", "/path/to/file1.ts") is True
+        assert (
+            cache_module.is_pair_cached("/path/to/file2.ts", "/path/to/file1.ts")
+            is True
+        )
 
     def test_cache_pairs_bulk(self, temp_cache_db):
         """一括キャッシュ追加"""

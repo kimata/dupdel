@@ -92,7 +92,9 @@ def expand_to_digit_group(name: str, start: int, end: int) -> tuple[int, int]:
     return start, end
 
 
-def find_digit_group_in_range(name: str, start: int, end: int) -> tuple[int, int] | None:
+def find_digit_group_in_range(
+    name: str, start: int, end: int
+) -> tuple[int, int] | None:
     """指定範囲内の数字を含む数字グループを見つける"""
     # 範囲内で最初の数字を見つける
     digit_pos = -1
@@ -249,14 +251,18 @@ _worker_file_infos: list[PrecomputedFileInfo] = []
 _worker_n: int = 0
 
 
-def _init_worker(file_infos: list[PrecomputedFileInfo]) -> None:  # pragma: no cover (別プロセスで実行)
+def _init_worker(
+    file_infos: list[PrecomputedFileInfo],
+) -> None:  # pragma: no cover (別プロセスで実行)
     """ワーカープロセスの初期化（データを一度だけ転送）"""
     global _worker_file_infos, _worker_n
     _worker_file_infos = file_infos
     _worker_n = len(file_infos)
 
 
-def _worker_compare_range(args: tuple[int, int, float]) -> tuple[list[DupCand], int]:  # pragma: no cover (別プロセスで実行)
+def _worker_compare_range(
+    args: tuple[int, int, float]
+) -> tuple[list[DupCand], int]:  # pragma: no cover (別プロセスで実行)
     """ワーカー: 指定範囲のファイルを全後続ファイルと比較"""
     start_idx, end_idx, match_th = args
     results: list[DupCand] = []
@@ -295,7 +301,9 @@ def find_dup_candidates_parallel(
     min_tasks = max(200, num_workers * 50)
     # 1タスクあたり最大50万比較に制限（大規模データでも頻繁に更新）
     max_comparisons_per_task = 500_000
-    target_per_task = min(max_comparisons_per_task, max(1, total_comparisons // min_tasks))
+    target_per_task = min(
+        max_comparisons_per_task, max(1, total_comparisons // min_tasks)
+    )
 
     # 開始インデックスごとの比較数: n-1, n-2, ..., 1
     tasks: list[tuple[int, int, float]] = []

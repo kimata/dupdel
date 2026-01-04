@@ -326,12 +326,44 @@ class TestExecDelete:
             sm = difflib.SequenceMatcher(None, "test.ts", "test.ts")
             dup_cand_list = [
                 [
-                    {"path": test_file1, "name": "test1.ts", "basename": "test1.ts", "size": 7, "mtime": 1000.0, "index": 1, "sm": sm},
-                    {"path": test_file1, "name": "test1.ts", "basename": "test1.ts", "size": 7, "mtime": 1001.0, "index": 2, "sm": sm},
+                    {
+                        "path": test_file1,
+                        "name": "test1.ts",
+                        "basename": "test1.ts",
+                        "size": 7,
+                        "mtime": 1000.0,
+                        "index": 1,
+                        "sm": sm,
+                    },
+                    {
+                        "path": test_file1,
+                        "name": "test1.ts",
+                        "basename": "test1.ts",
+                        "size": 7,
+                        "mtime": 1001.0,
+                        "index": 2,
+                        "sm": sm,
+                    },
                 ],
                 [
-                    {"path": test_file2, "name": "test2.ts", "basename": "test2.ts", "size": 7, "mtime": 1000.0, "index": 1, "sm": sm},
-                    {"path": test_file2, "name": "test2.ts", "basename": "test2.ts", "size": 7, "mtime": 1001.0, "index": 2, "sm": sm},
+                    {
+                        "path": test_file2,
+                        "name": "test2.ts",
+                        "basename": "test2.ts",
+                        "size": 7,
+                        "mtime": 1000.0,
+                        "index": 1,
+                        "sm": sm,
+                    },
+                    {
+                        "path": test_file2,
+                        "name": "test2.ts",
+                        "basename": "test2.ts",
+                        "size": 7,
+                        "mtime": 1001.0,
+                        "index": 2,
+                        "sm": sm,
+                    },
                 ],
             ]
 
@@ -349,8 +381,24 @@ class TestExecDelete:
         sm = difflib.SequenceMatcher(None, "test.ts", "test.ts")
         dup_cand_list = [
             [
-                {"path": "/nonexistent/file1.ts", "name": "file1.ts", "basename": "file1.ts", "size": 7, "mtime": 1000.0, "index": 1, "sm": sm},
-                {"path": "/nonexistent/file2.ts", "name": "file2.ts", "basename": "file2.ts", "size": 7, "mtime": 1001.0, "index": 2, "sm": sm},
+                {
+                    "path": "/nonexistent/file1.ts",
+                    "name": "file1.ts",
+                    "basename": "file1.ts",
+                    "size": 7,
+                    "mtime": 1000.0,
+                    "index": 1,
+                    "sm": sm,
+                },
+                {
+                    "path": "/nonexistent/file2.ts",
+                    "name": "file2.ts",
+                    "basename": "file2.ts",
+                    "size": 7,
+                    "mtime": 1001.0,
+                    "index": 2,
+                    "sm": sm,
+                },
             ]
         ]
 
@@ -638,7 +686,9 @@ class TestListDupCand:
                 return False
 
             try:
-                with patch("dupdel.ui.is_pair_cached", side_effect=is_cached_with_shutdown):
+                with patch(
+                    "dupdel.ui.is_pair_cached", side_effect=is_cached_with_shutdown
+                ):
                     result, skipped = list_dup_cand(tmpdir, manager)
                     assert result == []
                     assert skipped == []
@@ -800,8 +850,24 @@ class TestRunInteractive:
 
             sm = difflib.SequenceMatcher(None, "test.ts", "test.ts")
             dup_cand = [
-                {"path": test_file, "name": "test.ts", "basename": "test.ts", "size": 7, "mtime": 1000.0, "index": 1, "sm": sm},
-                {"path": test_file, "name": "test.ts", "basename": "test.ts", "size": 7, "mtime": 1001.0, "index": 2, "sm": sm},
+                {
+                    "path": test_file,
+                    "name": "test.ts",
+                    "basename": "test.ts",
+                    "size": 7,
+                    "mtime": 1000.0,
+                    "index": 1,
+                    "sm": sm,
+                },
+                {
+                    "path": test_file,
+                    "name": "test.ts",
+                    "basename": "test.ts",
+                    "size": 7,
+                    "mtime": 1001.0,
+                    "index": 2,
+                    "sm": sm,
+                },
             ]
 
             with patch("dupdel.ui.list_dup_cand", return_value=([dup_cand], [])):
@@ -838,8 +904,24 @@ class TestRunInteractive:
 
             sm = difflib.SequenceMatcher(None, "test.ts", "test.ts")
             dup_cand = [
-                {"path": test_file, "name": "test.ts", "basename": "test.ts", "size": 7, "mtime": 1000.0, "index": 1, "sm": sm},
-                {"path": test_file, "name": "test.ts", "basename": "test.ts", "size": 7, "mtime": 1001.0, "index": 2, "sm": sm},
+                {
+                    "path": test_file,
+                    "name": "test.ts",
+                    "basename": "test.ts",
+                    "size": 7,
+                    "mtime": 1000.0,
+                    "index": 1,
+                    "sm": sm,
+                },
+                {
+                    "path": test_file,
+                    "name": "test.ts",
+                    "basename": "test.ts",
+                    "size": 7,
+                    "mtime": 1001.0,
+                    "index": 2,
+                    "sm": sm,
+                },
             ]
             skipped = [("/path/file1", "/path/file2")]
 

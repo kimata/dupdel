@@ -35,14 +35,16 @@ def _get_connection() -> Iterator[sqlite3.Connection]:
 def init_cache_db() -> None:
     """キャッシュDBを初期化"""
     with _get_connection() as conn:
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS skipped_pairs (
                 path1 TEXT NOT NULL,
                 path2 TEXT NOT NULL,
                 skipped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (path1, path2)
             )
-        """)
+        """
+        )
         conn.commit()
 
 

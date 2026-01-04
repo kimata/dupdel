@@ -58,7 +58,9 @@ def truncate_to_width(text: str, max_width: int) -> str:
     return result + "..."
 
 
-def build_diff_text(text: str, sm: difflib.SequenceMatcher, mode: int, max_width: int) -> str:
+def build_diff_text(
+    text: str, sm: difflib.SequenceMatcher, mode: int, max_width: int
+) -> str:
     """差分を着色した文字列を構築（表示幅制限付き）"""
     result = []
     current_width = 0
@@ -68,7 +70,9 @@ def build_diff_text(text: str, sm: difflib.SequenceMatcher, mode: int, max_width
 
         # この部分を追加すると幅を超えるかチェック
         for char in s:
-            char_width = 2 if unicodedata.east_asian_width(char) in ("F", "W", "A") else 1
+            char_width = (
+                2 if unicodedata.east_asian_width(char) in ("F", "W", "A") else 1
+            )
             if current_width + char_width > max_width - 3:  # "..." の分
                 result.append(f"{COLOR_RESET}...")
                 return "".join(result)
