@@ -12,7 +12,7 @@ import pytest
 
 from dupdel.core import (
     PrecomputedFileInfo,
-    _compare_pair,
+    compare_pair,
     _expand_to_digit_group,
     _find_digit_group_in_range,
     _get_mtime_safe,
@@ -314,7 +314,7 @@ class TestPrecomputeFileInfo:
 
 
 class TestComparePair:
-    """_compare_pair のテスト"""
+    """compare_pair のテスト"""
 
     def test_similar_files(self):
         """類似ファイル"""
@@ -338,7 +338,7 @@ class TestComparePair:
             mtime=1001.0,
             index=2,
         )
-        result = _compare_pair(info1, info2, 0.85)
+        result = compare_pair(info1, info2, 0.85)
         assert result is not None
         assert len(result) == 2
 
@@ -364,7 +364,7 @@ class TestComparePair:
             mtime=1001.0,
             index=2,
         )
-        result = _compare_pair(info1, info2, 0.85)
+        result = compare_pair(info1, info2, 0.85)
         assert result is None
 
     def test_size_difference(self):
@@ -389,7 +389,7 @@ class TestComparePair:
             mtime=1001.0,
             index=2,
         )
-        result = _compare_pair(info1, info2, 0.85)
+        result = compare_pair(info1, info2, 0.85)
         assert result is None
 
     def test_episode_diff(self):
@@ -414,7 +414,7 @@ class TestComparePair:
             mtime=1001.0,
             index=2,
         )
-        result = _compare_pair(info1, info2, 0.85)
+        result = compare_pair(info1, info2, 0.85)
         assert result is None
 
     def test_zengo_diff(self):
@@ -439,7 +439,7 @@ class TestComparePair:
             mtime=1001.0,
             index=2,
         )
-        result = _compare_pair(info1, info2, 0.85)
+        result = compare_pair(info1, info2, 0.85)
         assert result is None
 
     def test_length_ratio_filter(self):
@@ -464,7 +464,7 @@ class TestComparePair:
             mtime=1001.0,
             index=2,
         )
-        result = _compare_pair(info1, info2, 0.85)
+        result = compare_pair(info1, info2, 0.85)
         assert result is None
 
     def test_older_newer_order(self):
@@ -489,7 +489,7 @@ class TestComparePair:
             mtime=1000.0,  # 古い
             index=2,
         )
-        result = _compare_pair(info1, info2, 0.85)
+        result = compare_pair(info1, info2, 0.85)
         assert result is not None
         assert result[0]["mtime"] < result[1]["mtime"]
 
@@ -517,7 +517,7 @@ class TestComparePair:
             index=2,
         )
         # 高いしきい値で呼び出すと、quick_ratioは通ってもratioで落ちる可能性
-        result = _compare_pair(info1, info2, 0.95)
+        result = compare_pair(info1, info2, 0.95)
         assert result is None
 
     def test_empty_normalized(self):
@@ -542,7 +542,7 @@ class TestComparePair:
             mtime=1001.0,
             index=2,
         )
-        result = _compare_pair(info1, info2, 0.85)
+        result = compare_pair(info1, info2, 0.85)
         # 空文字の場合でも比較は行われる
         assert result is not None
 

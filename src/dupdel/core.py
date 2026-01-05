@@ -183,7 +183,7 @@ def _has_episode_number_diff(name1: str, name2: str) -> bool:
     return False
 
 
-def _compare_pair(
+def compare_pair(
     info1: PrecomputedFileInfo, info2: PrecomputedFileInfo, match_th: float
 ) -> DupCand | None:
     """2つのファイルを比較し、重複候補であれば返す"""
@@ -276,7 +276,7 @@ def _worker_compare_range(
             if info1.dir_path != info2.dir_path:
                 continue
             valid_comparison_count += 1
-            result = _compare_pair(info1, info2, match_th)
+            result = compare_pair(info1, info2, match_th)
             if result is not None:
                 results.append(result)
 

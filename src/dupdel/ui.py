@@ -24,7 +24,7 @@ from .constants import (
 )
 from .core import (
     PrecomputedFileInfo,
-    _compare_pair,
+    compare_pair,
     count_valid_comparisons,
     find_dup_candidates_parallel,
     list_files,
@@ -452,7 +452,7 @@ def run_stats_mode(dir_path: str) -> None:
         for i in range(len(infos)):
             for j in range(i + 1, len(infos)):
                 pairs_checked += 1
-                result = _compare_pair(infos[i], infos[j], MATCH_TH)
+                result = compare_pair(infos[i], infos[j], MATCH_TH)
                 if result is not None:
                     candidates += 1
 
