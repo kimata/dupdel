@@ -29,6 +29,10 @@ line-length = 110
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.uv]
+default-groups = ["dev"]
+
 [dependency-groups]
 dev = [
     "pre-commit>=4.5.1",
@@ -44,14 +48,12 @@ dev = [
     "time-machine>=3.2.0",
     "mypy>=1.19.1",
     "pyright>=1.1.407",
+    "ty>=0.0.1a7",
     "types-pytz>=2025.2.0",
     "types-paramiko>=4.0.0",
     "types-pyyaml>=6.0.12",
     "types-requests>=2.32.0",
 ]
-
-[tool.uv]
-default-groups = ["dev"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -93,33 +95,22 @@ exclude_lines = [
 directory = "reports/coverage"
 
 [tool.mypy]
-mypy_path = "src"
-packages = ["dupdel"]
-explicit_package_bases = true
-strict = false
 warn_return_any = false
-warn_unused_ignores = true
-python_version = "3.12"
 warn_unused_configs = true
 ignore_missing_imports = true
+python_version = "3.12"
 exclude = [
     "^tests/",
     "^.venv/",
 ]
 
-[[tool.mypy.overrides]]
-module = [
-    "enlighten",
-]
-ignore_missing_imports = true
-
 [tool.pyright]
 venvPath = "."
 venv = ".venv"
-pythonVersion = "3.12"
-include = ["src", "tests"]
-reportMissingImports = false
+# enlighten の型定義が不完全なため、一部のエラーを無視
 reportArgumentType = false
 reportOperatorIssue = false
 reportIndexIssue = false
 reportGeneralTypeIssues = false
+include = ["src", "tests"]
+reportMissingImports = false
