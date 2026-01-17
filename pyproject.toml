@@ -33,6 +33,9 @@ select = ["E", "F", "W", "I", "B", "UP"]
 [tool.uv]
 default-groups = ["dev"]
 
+[tool.ty]
+[tool.ty.rules]
+
 [dependency-groups]
 dev = [
     "pre-commit>=4.5.1",
