@@ -50,12 +50,12 @@ dev = [
     "pytest-timeout>=2.4.0",
     "time-machine>=3.2.0",
     "mypy>=1.19.1",
-    "pyright>=1.1.407",
+    "pyright>=1.1.408",
     "ty>=0.0.1a7",
     "types-pytz>=2025.2.0",
     "types-paramiko>=4.0.0",
     "types-pyyaml>=6.0.12",
-    "types-requests>=2.32.0",
+    "types-requests>=2.32.4",
 ]
 
 [tool.pytest.ini_options]
