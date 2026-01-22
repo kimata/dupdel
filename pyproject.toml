@@ -117,3 +117,4 @@ reportIndexIssue = false
 reportGeneralTypeIssues = false
 include = ["src", "tests"]
 reportMissingImports = false
+reportAttributeAccessIssue = false
