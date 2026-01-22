@@ -1,6 +1,6 @@
 [project]
 name = "dupdel"
-version = "0.1.0"
+dynamic = ["version"]
 description = "名前やサイズがが似ているファイルを削除するのを支援するツールです．"
 authors = [
     { name = "KIMATA Tetsuya", email = "kimata@green-rabbit.net" }
@@ -11,6 +11,7 @@ requires-python = ">=3.11"
 
 dependencies = [
     "docopt-ng>=0.9.0",
+    "my-lib @ git+https://github.com/kimata/my-py-lib@aa64482fe669ed3d133adf6a13b9ef4d217a5ffc",
     "enlighten>=1.14.1",
 ]
 
