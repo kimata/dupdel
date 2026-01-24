@@ -230,7 +230,27 @@ FileInfo = dict[str, Any]
 - 関連するドキュメントも更新すること
 - mypy, pyright, ty がパスすることを確認すること
 
-### リリース時の注意
+### リリース（タグ作成）時
 
-- タグを打つ際は `CHANGELOG.md` を更新すること
-- 変更内容を適切なカテゴリ（Added, Changed, Fixed, Removed 等）に分類して記載する
+リリースタグを作成する際は、以下の手順に従うこと：
+
+1. **CHANGELOG.md を更新する**
+    - 新しいバージョンのセクションを追加
+    - 含まれる変更を以下のカテゴリで記載（絵文字付き）：
+        - `### ✨ Added`: 新機能
+        - `### 🔄 Changed`: 既存機能の変更
+        - `### 🐛 Fixed`: バグ修正
+        - `### 🗑️ Removed`: 削除された機能
+        - `### 🔒 Security`: セキュリティ関連の修正
+        - `### ⚡ Performance`: パフォーマンス改善
+        - `### 📝 Documentation`: ドキュメント更新
+        - `### 🧪 Tests`: テスト関連
+        - `### 🔧 CI`: CI/CD 関連
+        - `### 🏗️ Infrastructure`: インフラ関連
+    - [Keep a Changelog](https://keepachangelog.com/) 形式を参考にする
+
+2. **タグを作成する**
+    ```bash
+    git tag -a v1.x.x -m "バージョン説明"
+    git push origin v1.x.x
+    ```
