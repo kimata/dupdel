@@ -153,8 +153,8 @@ FileInfo = dict[str, Any]
 
 ### パス操作
 
-- 既存コードとの一貫性を維持するため、`os.path` を使用
-- パフォーマンス重視の部分では `os.path` が適切
+- `pathlib.Path` を使用する
+- `os.walk` は引き続き使用可（`pathlib` に直接の代替がないため）
 
 ### コールバック
 
@@ -229,3 +229,8 @@ FileInfo = dict[str, Any]
 - 関連するテストも修正すること
 - 関連するドキュメントも更新すること
 - mypy, pyright, ty がパスすることを確認すること
+
+### リリース時の注意
+
+- タグを打つ際は `CHANGELOG.md` を更新すること
+- 変更内容を適切なカテゴリ（Added, Changed, Fixed, Removed 等）に分類して記載する

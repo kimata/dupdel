@@ -1,17 +1,17 @@
 """キャッシュ管理（SQLite）"""
 
-import os
 import sqlite3
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator
+from pathlib import Path
 
-# キャッシュDBのパス（アプリケーションディレクトリに保存）
-_CACHE_DB_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "cache.db")
+# キャッシュDBのパス（カレントディレクトリに保存）
+_CACHE_DB_PATH = ".dupdel_cache.db"
 
 
 def _normalize_path(path: str) -> str:
     """パスを正規化（絶対パスに変換）"""
-    return os.path.abspath(path)
+    return str(Path(path).resolve())
 
 
 def _get_pair_key(path1: str, path2: str) -> tuple[str, str]:
@@ -23,9 +23,7 @@ def _get_pair_key(path1: str, path2: str) -> tuple[str, str]:
 @contextmanager
 def _get_connection() -> Iterator[sqlite3.Connection]:
     """データベース接続を取得"""
-    db_path = os.path.abspath(_CACHE_DB_PATH)
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(_CACHE_DB_PATH)
     try:
         yield conn
     finally:

@@ -1,76 +1,80 @@
 image: gitlab.green-rabbit.net:5050/kimata/local-ubuntu:260104_3efe597c
 
 variables:
-  UV_CACHE_DIR: .uv-cache
-  PYRIGHT_PYTHON_FORCE_VERSION: latest
+    UV_CACHE_DIR: .uv-cache
+    PYRIGHT_PYTHON_FORCE_VERSION: latest
 
 stages:
-  - pre-test
-  - test
-  - renovate
+    - pre-test
+    - test
+    - renovate
 
 test-prepare:
-  stage: pre-test
+    stage: pre-test
 
-  needs: []
+    needs: []
 
-  script:
-    - uv sync --locked --no-editable
+    script:
+        - uv sync --locked --no-editable
 
-  cache:
-    - key:
-        files:
-          - uv.lock
-      paths:
-        - $UV_CACHE_DIR
+    cache:
+        - key:
+              files:
+                  - uv.lock
+          fallback_keys:
+              - uv-cache-${CI_PROJECT_ID}
+          paths:
+              - $UV_CACHE_DIR
 
 test-typecheck:
-  stage: test
+    stage: test
 
-  needs:
-    - test-prepare
+    needs:
+        - test-prepare
 
-  script:
-    - uv run python -m pyright
-    - uv run mypy src/
+    script:
+        - uv run python -m pyright
+        - uv run mypy src/
 
-  cache:
-    - key:
-        files:
-          - uv.lock
-      paths:
-        - ${UV_CACHE_DIR}
+    cache:
+        - key:
+              files:
+                  - uv.lock
+          fallback_keys:
+              - uv-cache-${CI_PROJECT_ID}
+          paths:
+              - ${UV_CACHE_DIR}
 
 test-normal:
-  stage: test
+    stage: test
 
-  needs:
-    - test-prepare
+    needs:
+        - test-prepare
 
-  script:
-    - export LANG=ja_JP.UTF-8
-    - export LANGUAGE=ja_JP:ja
-    - export LC_ALL=ja_JP.UTF-8
-    - export TERM=xterm-256color
+    script:
+        - export LANG=ja_JP.UTF-8
+        - export LANGUAGE=ja_JP:ja
+        - export LC_ALL=ja_JP.UTF-8
+        - export TERM=xterm-256color
 
-    - uv run pytest --numprocesses=auto --junit-xml=reports/junit-report.xml tests/test_core.py tests/test_cache.py
+        - uv run pytest --numprocesses=auto --junit-xml=reports/junit-report.xml tests/test_core.py tests/test_cache.py
 
-  artifacts:
-    when: always
-    reports:
-      junit: reports/junit-report.xml
+    artifacts:
+        when: always
+        reports:
+            junit: reports/junit-report.xml
 
 renovate:
-  stage: renovate
-  image:
-    name: gitlab.green-rabbit.net:5050/kimata/local-renovate:260104_3da7b77b
+    stage: renovate
+    image:
+        name: gitlab.green-rabbit.net:5050/kimata/local-renovate:260104_3da7b77b
 
-  script:
-    - renovate --platform gitlab --token ${RENOVATE_TOKEN} --endpoint ${CI_SERVER_URL}/api/v4 ${CI_PROJECT_PATH}
+    script:
+        - renovate --platform gitlab --token ${RENOVATE_TOKEN} --endpoint ${CI_SERVER_URL}/api/v4 ${CI_PROJECT_PATH}
 
-  rules:
-    - if: '$CI_COMMIT_BRANCH != "master"'
-      when: never
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'
-    - changes:
-        - renovate.json
+    rules:
+        - if: '$CI_COMMIT_BRANCH != "master"'
+          when: never
+        - if: '$CI_PIPELINE_SOURCE == "schedule"'
+        - changes:
+              - renovate.json

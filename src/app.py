@@ -17,7 +17,8 @@ from dupdel import run_interactive, run_stats_mode
 
 
 def main() -> None:
-    assert __doc__ is not None
+    if __doc__ is None:
+        raise RuntimeError("docstring is missing")
     args = docopt(__doc__)
 
     target_dir_path = args["PATH"]

@@ -1,12 +1,14 @@
 """ui.py のユニットテスト"""
+# ruff: noqa: S101, SIM117
 
 import difflib
-import os
 import tempfile
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from dupdel.constants import FileInfo, ListDupCandResult
 from dupdel.ui import (
     _blinking_input,
     _exec_delete,
@@ -40,26 +42,26 @@ class TestPrintDupCand:
     def test_print_candidate(self, capsys):
         """重複候補の表示"""
         sm = difflib.SequenceMatcher(None, "file1.ts", "file2.ts")
-        dup_cand = [
-            {
-                "path": "/dir/file1.ts",
-                "name": "file1.ts",
-                "basename": "file1.ts",
-                "size": 1000000,
-                "mtime": 1000.0,
-                "index": 1,
-                "sm": sm,
-            },
-            {
-                "path": "/dir/file2.ts",
-                "name": "file2.ts",
-                "basename": "file2.ts",
-                "size": 1000000,
-                "mtime": 1001.0,
-                "index": 2,
-                "sm": sm,
-            },
-        ]
+        dup_cand = (
+            FileInfo(
+                path="/dir/file1.ts",
+                name="file1.ts",
+                basename="file1.ts",
+                size=1000000,
+                mtime=1000.0,
+                index=1,
+                sm=sm,
+            ),
+            FileInfo(
+                path="/dir/file2.ts",
+                name="file2.ts",
+                basename="file2.ts",
+                size=1000000,
+                mtime=1001.0,
+                index=2,
+                sm=sm,
+            ),
+        )
         _print_dup_cand(dup_cand, 1, 10)
         captured = capsys.readouterr()
         assert "類似度" in captured.out
@@ -68,26 +70,26 @@ class TestPrintDupCand:
     def test_print_with_directory(self, capsys):
         """ディレクトリパス付きの表示"""
         sm = difflib.SequenceMatcher(None, "file1.ts", "file2.ts")
-        dup_cand = [
-            {
-                "path": "/dir/subdir/file1.ts",
-                "name": "subdir/file1.ts",
-                "basename": "file1.ts",
-                "size": 1000000,
-                "mtime": 1000.0,
-                "index": 1,
-                "sm": sm,
-            },
-            {
-                "path": "/dir/subdir/file2.ts",
-                "name": "subdir/file2.ts",
-                "basename": "file2.ts",
-                "size": 1000000,
-                "mtime": 1001.0,
-                "index": 2,
-                "sm": sm,
-            },
-        ]
+        dup_cand = (
+            FileInfo(
+                path="/dir/subdir/file1.ts",
+                name="subdir/file1.ts",
+                basename="file1.ts",
+                size=1000000,
+                mtime=1000.0,
+                index=1,
+                sm=sm,
+            ),
+            FileInfo(
+                path="/dir/subdir/file2.ts",
+                name="subdir/file2.ts",
+                basename="file2.ts",
+                size=1000000,
+                mtime=1001.0,
+                index=2,
+                sm=sm,
+            ),
+        )
         _print_dup_cand(dup_cand, 1, 10)
         captured = capsys.readouterr()
         assert "subdir" in captured.out
@@ -95,26 +97,26 @@ class TestPrintDupCand:
     def test_print_with_size_warning(self, capsys):
         """サイズ差警告の表示"""
         sm = difflib.SequenceMatcher(None, "file1.ts", "file2.ts")
-        dup_cand = [
-            {
-                "path": "/dir/file1.ts",
-                "name": "file1.ts",
-                "basename": "file1.ts",
-                "size": 500 * 1024 * 1024,  # 500MB
-                "mtime": 1000.0,
-                "index": 1,
-                "sm": sm,
-            },
-            {
-                "path": "/dir/file2.ts",
-                "name": "file2.ts",
-                "basename": "file2.ts",
-                "size": 100 * 1024 * 1024,  # 100MB
-                "mtime": 1001.0,
-                "index": 2,
-                "sm": sm,
-            },
-        ]
+        dup_cand = (
+            FileInfo(
+                path="/dir/file1.ts",
+                name="file1.ts",
+                basename="file1.ts",
+                size=500 * 1024 * 1024,  # 500MB
+                mtime=1000.0,
+                index=1,
+                sm=sm,
+            ),
+            FileInfo(
+                path="/dir/file2.ts",
+                name="file2.ts",
+                basename="file2.ts",
+                size=100 * 1024 * 1024,  # 100MB
+                mtime=1001.0,
+                index=2,
+                sm=sm,
+            ),
+        )
         _print_dup_cand(dup_cand, 1, 10)
         captured = capsys.readouterr()
         assert "MB" in captured.out
@@ -125,26 +127,26 @@ class TestPrintDupCand:
         with patch("dupdel.ui.get_term_width", return_value=60):
             long_dir = "very/long/directory/path/that/needs/truncation"
             sm = difflib.SequenceMatcher(None, "file1.ts", "file2.ts")
-            dup_cand = [
-                {
-                    "path": f"/dir/{long_dir}/file1.ts",
-                    "name": f"{long_dir}/file1.ts",
-                    "basename": "file1.ts",
-                    "size": 1000000,
-                    "mtime": 1000.0,
-                    "index": 1,
-                    "sm": sm,
-                },
-                {
-                    "path": f"/dir/{long_dir}/file2.ts",
-                    "name": f"{long_dir}/file2.ts",
-                    "basename": "file2.ts",
-                    "size": 1000000,
-                    "mtime": 1001.0,
-                    "index": 2,
-                    "sm": sm,
-                },
-            ]
+            dup_cand = (
+                FileInfo(
+                    path=f"/dir/{long_dir}/file1.ts",
+                    name=f"{long_dir}/file1.ts",
+                    basename="file1.ts",
+                    size=1000000,
+                    mtime=1000.0,
+                    index=1,
+                    sm=sm,
+                ),
+                FileInfo(
+                    path=f"/dir/{long_dir}/file2.ts",
+                    name=f"{long_dir}/file2.ts",
+                    basename="file2.ts",
+                    size=1000000,
+                    mtime=1001.0,
+                    index=2,
+                    sm=sm,
+                ),
+            )
             _print_dup_cand(dup_cand, 1, 10)
             captured = capsys.readouterr()
             # 省略記号が含まれていることを確認
@@ -222,7 +224,7 @@ class TestExecDelete:
         """空のリスト"""
         manager = MagicMock()
         manager.counter.return_value = MagicMock()
-        result = _exec_delete([], "/tmp/trash", manager)
+        result = _exec_delete([], "/tmp/trash", manager)  # noqa: S108
         assert result is True
         captured = capsys.readouterr()
         assert "削除候補がありません" in captured.out
@@ -230,33 +232,32 @@ class TestExecDelete:
     def test_delete_yes(self):
         """削除を確認"""
         with tempfile.TemporaryDirectory() as tmpdir:
-            trash_dir = os.path.join(tmpdir, "trash")
-            test_file = os.path.join(tmpdir, "test.ts")
-            with open(test_file, "w") as f:
-                f.write("content")
+            trash_dir = Path(tmpdir) / "trash"
+            test_file = Path(tmpdir) / "test.ts"
+            test_file.write_text("content")
 
             sm = difflib.SequenceMatcher(None, "test.ts", "test.ts")
             dup_cand_list = [
-                [
-                    {
-                        "path": test_file,
-                        "name": "test.ts",
-                        "basename": "test.ts",
-                        "size": 7,
-                        "mtime": 1000.0,
-                        "index": 1,
-                        "sm": sm,
-                    },
-                    {
-                        "path": test_file,
-                        "name": "test.ts",
-                        "basename": "test.ts",
-                        "size": 7,
-                        "mtime": 1001.0,
-                        "index": 2,
-                        "sm": sm,
-                    },
-                ]
+                (
+                    FileInfo(
+                        path=str(test_file),
+                        name="test.ts",
+                        basename="test.ts",
+                        size=7,
+                        mtime=1000.0,
+                        index=1,
+                        sm=sm,
+                    ),
+                    FileInfo(
+                        path=str(test_file),
+                        name="test.ts",
+                        basename="test.ts",
+                        size=7,
+                        mtime=1001.0,
+                        index=2,
+                        sm=sm,
+                    ),
+                )
             ]
 
             manager = MagicMock()
@@ -265,41 +266,40 @@ class TestExecDelete:
             manager.counter.return_value = counter
 
             with patch("dupdel.ui._blinking_input", return_value="y"):
-                result = _exec_delete(dup_cand_list, trash_dir, manager)
+                result = _exec_delete(dup_cand_list, str(trash_dir), manager)
                 assert result is True
-                assert not os.path.exists(test_file)
-                assert os.path.exists(os.path.join(trash_dir, "test.ts"))
+                assert not test_file.exists()
+                assert (trash_dir / "test.ts").exists()
 
     def test_delete_no(self):
         """削除を拒否"""
         with tempfile.TemporaryDirectory() as tmpdir:
-            trash_dir = os.path.join(tmpdir, "trash")
-            test_file = os.path.join(tmpdir, "test.ts")
-            with open(test_file, "w") as f:
-                f.write("content")
+            trash_dir = Path(tmpdir) / "trash"
+            test_file = Path(tmpdir) / "test.ts"
+            test_file.write_text("content")
 
             sm = difflib.SequenceMatcher(None, "test.ts", "test.ts")
             dup_cand_list = [
-                [
-                    {
-                        "path": test_file,
-                        "name": "test.ts",
-                        "basename": "test.ts",
-                        "size": 7,
-                        "mtime": 1000.0,
-                        "index": 1,
-                        "sm": sm,
-                    },
-                    {
-                        "path": test_file,
-                        "name": "test.ts",
-                        "basename": "test.ts",
-                        "size": 7,
-                        "mtime": 1001.0,
-                        "index": 2,
-                        "sm": sm,
-                    },
-                ]
+                (
+                    FileInfo(
+                        path=str(test_file),
+                        name="test.ts",
+                        basename="test.ts",
+                        size=7,
+                        mtime=1000.0,
+                        index=1,
+                        sm=sm,
+                    ),
+                    FileInfo(
+                        path=str(test_file),
+                        name="test.ts",
+                        basename="test.ts",
+                        size=7,
+                        mtime=1001.0,
+                        index=2,
+                        sm=sm,
+                    ),
+                )
             ]
 
             manager = MagicMock()
@@ -308,63 +308,61 @@ class TestExecDelete:
             manager.counter.return_value = counter
 
             with patch("dupdel.ui._blinking_input", return_value="n"):
-                result = _exec_delete(dup_cand_list, trash_dir, manager)
+                result = _exec_delete(dup_cand_list, str(trash_dir), manager)
                 assert result is False
-                assert os.path.exists(test_file)
+                assert test_file.exists()
 
     def test_delete_all(self):
         """すべて削除"""
         with tempfile.TemporaryDirectory() as tmpdir:
-            trash_dir = os.path.join(tmpdir, "trash")
-            test_file1 = os.path.join(tmpdir, "test1.ts")
-            test_file2 = os.path.join(tmpdir, "test2.ts")
-            with open(test_file1, "w") as f:
-                f.write("content")
-            with open(test_file2, "w") as f:
-                f.write("content")
+            trash_dir = Path(tmpdir) / "trash"
+            test_file1 = Path(tmpdir) / "test1.ts"
+            test_file2 = Path(tmpdir) / "test2.ts"
+            test_file1.write_text("content")
+            test_file2.write_text("content")
 
             sm = difflib.SequenceMatcher(None, "test.ts", "test.ts")
             dup_cand_list = [
-                [
-                    {
-                        "path": test_file1,
-                        "name": "test1.ts",
-                        "basename": "test1.ts",
-                        "size": 7,
-                        "mtime": 1000.0,
-                        "index": 1,
-                        "sm": sm,
-                    },
-                    {
-                        "path": test_file1,
-                        "name": "test1.ts",
-                        "basename": "test1.ts",
-                        "size": 7,
-                        "mtime": 1001.0,
-                        "index": 2,
-                        "sm": sm,
-                    },
-                ],
-                [
-                    {
-                        "path": test_file2,
-                        "name": "test2.ts",
-                        "basename": "test2.ts",
-                        "size": 7,
-                        "mtime": 1000.0,
-                        "index": 1,
-                        "sm": sm,
-                    },
-                    {
-                        "path": test_file2,
-                        "name": "test2.ts",
-                        "basename": "test2.ts",
-                        "size": 7,
-                        "mtime": 1001.0,
-                        "index": 2,
-                        "sm": sm,
-                    },
-                ],
+                (
+                    FileInfo(
+                        path=str(test_file1),
+                        name="test1.ts",
+                        basename="test1.ts",
+                        size=7,
+                        mtime=1000.0,
+                        index=1,
+                        sm=sm,
+                    ),
+                    FileInfo(
+                        path=str(test_file1),
+                        name="test1.ts",
+                        basename="test1.ts",
+                        size=7,
+                        mtime=1001.0,
+                        index=2,
+                        sm=sm,
+                    ),
+                ),
+                (
+                    FileInfo(
+                        path=str(test_file2),
+                        name="test2.ts",
+                        basename="test2.ts",
+                        size=7,
+                        mtime=1000.0,
+                        index=1,
+                        sm=sm,
+                    ),
+                    FileInfo(
+                        path=str(test_file2),
+                        name="test2.ts",
+                        basename="test2.ts",
+                        size=7,
+                        mtime=1001.0,
+                        index=2,
+                        sm=sm,
+                    ),
+                ),
             ]
 
             manager = MagicMock()
@@ -373,33 +371,33 @@ class TestExecDelete:
             manager.counter.return_value = counter
 
             with patch("dupdel.ui._blinking_input", return_value="a"):
-                result = _exec_delete(dup_cand_list, trash_dir, manager)
+                result = _exec_delete(dup_cand_list, str(trash_dir), manager)
                 assert result is True
 
     def test_file_not_found(self, capsys):
         """ファイルが見つからない"""
         sm = difflib.SequenceMatcher(None, "test.ts", "test.ts")
         dup_cand_list = [
-            [
-                {
-                    "path": "/nonexistent/file1.ts",
-                    "name": "file1.ts",
-                    "basename": "file1.ts",
-                    "size": 7,
-                    "mtime": 1000.0,
-                    "index": 1,
-                    "sm": sm,
-                },
-                {
-                    "path": "/nonexistent/file2.ts",
-                    "name": "file2.ts",
-                    "basename": "file2.ts",
-                    "size": 7,
-                    "mtime": 1001.0,
-                    "index": 2,
-                    "sm": sm,
-                },
-            ]
+            (
+                FileInfo(
+                    path="/nonexistent/file1.ts",
+                    name="file1.ts",
+                    basename="file1.ts",
+                    size=7,
+                    mtime=1000.0,
+                    index=1,
+                    sm=sm,
+                ),
+                FileInfo(
+                    path="/nonexistent/file2.ts",
+                    name="file2.ts",
+                    basename="file2.ts",
+                    size=7,
+                    mtime=1001.0,
+                    index=2,
+                    sm=sm,
+                ),
+            )
         ]
 
         manager = MagicMock()
@@ -407,7 +405,7 @@ class TestExecDelete:
         counter.count = 0
         manager.counter.return_value = counter
 
-        result = _exec_delete(dup_cand_list, "/tmp/trash", manager)
+        _exec_delete(dup_cand_list, "/tmp/trash", manager)  # noqa: S108
         captured = capsys.readouterr()
         assert "ファイルが見つかりません" in captured.out
 
@@ -424,16 +422,15 @@ class TestListDupCand:
             manager.status_bar.return_value = status_bar
             manager.counter.return_value = counter
 
-            result, skipped = _list_dup_cand(tmpdir, manager)
-            assert result == []
-            assert skipped == []
+            result = _list_dup_cand(tmpdir, manager)
+            assert result.candidates == []
+            assert result.skipped_pairs == []
 
     def test_single_file(self):
         """1ファイルのみ"""
         with tempfile.TemporaryDirectory() as tmpdir:
-            test_file = os.path.join(tmpdir, "test.ts")
-            with open(test_file, "w") as f:
-                f.write("content")
+            test_file = Path(tmpdir) / "test.ts"
+            test_file.write_text("content")
 
             manager = MagicMock()
             status_bar = MagicMock()
@@ -441,18 +438,17 @@ class TestListDupCand:
             manager.status_bar.return_value = status_bar
             manager.counter.return_value = counter
 
-            result, skipped = _list_dup_cand(tmpdir, manager)
-            assert result == []
-            assert skipped == []
+            result = _list_dup_cand(tmpdir, manager)
+            assert result.candidates == []
+            assert result.skipped_pairs == []
 
     def test_shutdown_event_early_return(self):
         """shutdown_eventによる早期リターン"""
         from dupdel.constants import shutdown_event
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            test_file = os.path.join(tmpdir, "test.ts")
-            with open(test_file, "w") as f:
-                f.write("content")
+            test_file = Path(tmpdir) / "test.ts"
+            test_file.write_text("content")
 
             manager = MagicMock()
             status_bar = MagicMock()
@@ -462,9 +458,9 @@ class TestListDupCand:
 
             shutdown_event.set()
             try:
-                result, skipped = _list_dup_cand(tmpdir, manager)
-                assert result == []
-                assert skipped == []
+                result = _list_dup_cand(tmpdir, manager)
+                assert result.candidates == []
+                assert result.skipped_pairs == []
             finally:
                 shutdown_event.clear()
 
@@ -472,10 +468,8 @@ class TestListDupCand:
         """類似ファイルがあり「y」と回答"""
         with tempfile.TemporaryDirectory() as tmpdir:
             # 類似したファイル名を作成
-            with open(os.path.join(tmpdir, "番組名_200101.ts"), "w") as f:
-                f.write("x" * 1000)
-            with open(os.path.join(tmpdir, "番組名_200102.ts"), "w") as f:
-                f.write("x" * 1000)
+            (Path(tmpdir) / "番組名_200101.ts").write_text("x" * 1000)
+            (Path(tmpdir) / "番組名_200102.ts").write_text("x" * 1000)
 
             manager = MagicMock()
             status_bar = MagicMock()
@@ -485,17 +479,15 @@ class TestListDupCand:
             manager.counter.return_value = counter
 
             with patch("dupdel.ui._blinking_input", return_value="y"):
-                result, skipped = _list_dup_cand(tmpdir, manager)
-                assert len(result) == 1
+                result = _list_dup_cand(tmpdir, manager)
+                assert len(result.candidates) == 1
 
     def test_with_similar_files_no(self):
         """類似ファイルがあり「n」と回答"""
         with tempfile.TemporaryDirectory() as tmpdir:
             # 類似したファイル名を作成
-            with open(os.path.join(tmpdir, "番組名_200101.ts"), "w") as f:
-                f.write("x" * 1000)
-            with open(os.path.join(tmpdir, "番組名_200102.ts"), "w") as f:
-                f.write("x" * 1000)
+            (Path(tmpdir) / "番組名_200101.ts").write_text("x" * 1000)
+            (Path(tmpdir) / "番組名_200102.ts").write_text("x" * 1000)
 
             manager = MagicMock()
             status_bar = MagicMock()
@@ -505,18 +497,16 @@ class TestListDupCand:
             manager.counter.return_value = counter
 
             with patch("dupdel.ui._blinking_input", return_value="n"):
-                result, skipped = _list_dup_cand(tmpdir, manager)
-                assert len(result) == 0
-                assert len(skipped) == 1
+                result = _list_dup_cand(tmpdir, manager)
+                assert len(result.candidates) == 0
+                assert len(result.skipped_pairs) == 1
 
     def test_with_similar_files_quit(self):
         """類似ファイルがあり「q」と回答"""
         with tempfile.TemporaryDirectory() as tmpdir:
             # 類似したファイル名を作成
-            with open(os.path.join(tmpdir, "番組名_200101.ts"), "w") as f:
-                f.write("x" * 1000)
-            with open(os.path.join(tmpdir, "番組名_200102.ts"), "w") as f:
-                f.write("x" * 1000)
+            (Path(tmpdir) / "番組名_200101.ts").write_text("x" * 1000)
+            (Path(tmpdir) / "番組名_200102.ts").write_text("x" * 1000)
 
             manager = MagicMock()
             status_bar = MagicMock()
@@ -526,21 +516,19 @@ class TestListDupCand:
             manager.counter.return_value = counter
 
             with patch("dupdel.ui._blinking_input", return_value="q"):
-                result, skipped = _list_dup_cand(tmpdir, manager)
-                assert len(result) == 0
+                result = _list_dup_cand(tmpdir, manager)
+                assert len(result.candidates) == 0
 
     def test_no_valid_comparisons(self):
         """有効な比較対象がない（異なるディレクトリのファイル）"""
         with tempfile.TemporaryDirectory() as tmpdir:
             # 異なるサブディレクトリにファイルを作成
-            subdir1 = os.path.join(tmpdir, "dir1")
-            subdir2 = os.path.join(tmpdir, "dir2")
-            os.makedirs(subdir1)
-            os.makedirs(subdir2)
-            with open(os.path.join(subdir1, "file.ts"), "w") as f:
-                f.write("content")
-            with open(os.path.join(subdir2, "file.ts"), "w") as f:
-                f.write("content")
+            subdir1 = Path(tmpdir) / "dir1"
+            subdir2 = Path(tmpdir) / "dir2"
+            subdir1.mkdir()
+            subdir2.mkdir()
+            (subdir1 / "file.ts").write_text("content")
+            (subdir2 / "file.ts").write_text("content")
 
             manager = MagicMock()
             status_bar = MagicMock()
@@ -548,20 +536,18 @@ class TestListDupCand:
             manager.status_bar.return_value = status_bar
             manager.counter.return_value = counter
 
-            result, skipped = _list_dup_cand(tmpdir, manager)
-            assert result == []
-            assert skipped == []
+            result = _list_dup_cand(tmpdir, manager)
+            assert result.candidates == []
+            assert result.skipped_pairs == []
 
     def test_with_cached_pairs(self):
         """キャッシュ済みペアがスキップされる"""
         with tempfile.TemporaryDirectory() as tmpdir:
             # 類似したファイル名を作成
-            file1 = os.path.join(tmpdir, "番組名_200101.ts")
-            file2 = os.path.join(tmpdir, "番組名_200102.ts")
-            with open(file1, "w") as f:
-                f.write("x" * 1000)
-            with open(file2, "w") as f:
-                f.write("x" * 1000)
+            file1 = Path(tmpdir) / "番組名_200101.ts"
+            file2 = Path(tmpdir) / "番組名_200102.ts"
+            file1.write_text("x" * 1000)
+            file2.write_text("x" * 1000)
 
             manager = MagicMock()
             status_bar = MagicMock()
@@ -571,8 +557,8 @@ class TestListDupCand:
             manager.counter.return_value = counter
 
             with patch("dupdel.ui.is_pair_cached", return_value=True):
-                result, skipped = _list_dup_cand(tmpdir, manager)
-                assert len(result) == 0
+                result = _list_dup_cand(tmpdir, manager)
+                assert len(result.candidates) == 0
 
     def test_shutdown_during_question_loop(self):
         """質問ループ中にshutdown_eventがセットされた場合（複数ペア）"""
@@ -581,8 +567,7 @@ class TestListDupCand:
         with tempfile.TemporaryDirectory() as tmpdir:
             # 複数の類似ファイルペアを作成（3つ以上で2ペア以上検出される）
             for i in range(4):
-                with open(os.path.join(tmpdir, f"番組名_20010{i}.ts"), "w") as f:
-                    f.write("x" * 1000)
+                (Path(tmpdir) / f"番組名_20010{i}.ts").write_text("x" * 1000)
 
             manager = MagicMock()
             status_bar = MagicMock()
@@ -601,10 +586,8 @@ class TestListDupCand:
                 return "y"
 
             try:
-                with patch(
-                    "dupdel.ui._blinking_input", side_effect=input_with_shutdown
-                ):
-                    result, skipped = _list_dup_cand(tmpdir, manager)
+                with patch("dupdel.ui._blinking_input", side_effect=input_with_shutdown):
+                    _list_dup_cand(tmpdir, manager)
                     # shutdown後は残りの質問がスキップされる
             finally:
                 shutdown_event.clear()
@@ -613,10 +596,8 @@ class TestListDupCand:
         """KeyboardInterruptで継続を選択"""
         with tempfile.TemporaryDirectory() as tmpdir:
             # 類似したファイル名を作成
-            with open(os.path.join(tmpdir, "番組名_200101.ts"), "w") as f:
-                f.write("x" * 1000)
-            with open(os.path.join(tmpdir, "番組名_200102.ts"), "w") as f:
-                f.write("x" * 1000)
+            (Path(tmpdir) / "番組名_200101.ts").write_text("x" * 1000)
+            (Path(tmpdir) / "番組名_200102.ts").write_text("x" * 1000)
 
             manager = MagicMock()
             status_bar = MagicMock()
@@ -644,10 +625,8 @@ class TestListDupCand:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # 類似したファイル名を作成
-            with open(os.path.join(tmpdir, "番組名_200101.ts"), "w") as f:
-                f.write("x" * 1000)
-            with open(os.path.join(tmpdir, "番組名_200102.ts"), "w") as f:
-                f.write("x" * 1000)
+            (Path(tmpdir) / "番組名_200101.ts").write_text("x" * 1000)
+            (Path(tmpdir) / "番組名_200102.ts").write_text("x" * 1000)
 
             manager = MagicMock()
             status_bar = MagicMock()
@@ -660,7 +639,7 @@ class TestListDupCand:
             try:
                 with patch("dupdel.ui._blinking_input", side_effect=KeyboardInterrupt):
                     with patch("dupdel.ui._handle_interrupt", return_value=True):
-                        result, skipped = _list_dup_cand(tmpdir, manager)
+                        _list_dup_cand(tmpdir, manager)
                         assert shutdown_event.is_set()
             finally:
                 shutdown_event.clear()
@@ -671,10 +650,8 @@ class TestListDupCand:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # 類似したファイル名を作成
-            with open(os.path.join(tmpdir, "番組名_200101.ts"), "w") as f:
-                f.write("x" * 1000)
-            with open(os.path.join(tmpdir, "番組名_200102.ts"), "w") as f:
-                f.write("x" * 1000)
+            (Path(tmpdir) / "番組名_200101.ts").write_text("x" * 1000)
+            (Path(tmpdir) / "番組名_200102.ts").write_text("x" * 1000)
 
             manager = MagicMock()
             status_bar = MagicMock()
@@ -688,12 +665,10 @@ class TestListDupCand:
                 return False
 
             try:
-                with patch(
-                    "dupdel.ui.is_pair_cached", side_effect=is_cached_with_shutdown
-                ):
-                    result, skipped = _list_dup_cand(tmpdir, manager)
-                    assert result == []
-                    assert skipped == []
+                with patch("dupdel.ui.is_pair_cached", side_effect=is_cached_with_shutdown):
+                    result = _list_dup_cand(tmpdir, manager)
+                    assert result.candidates == []
+                    assert result.skipped_pairs == []
             finally:
                 shutdown_event.clear()
 
@@ -701,10 +676,8 @@ class TestListDupCand:
         """question_counter.close()が例外を投げる場合"""
         with tempfile.TemporaryDirectory() as tmpdir:
             # 類似したファイル名を作成
-            with open(os.path.join(tmpdir, "番組名_200101.ts"), "w") as f:
-                f.write("x" * 1000)
-            with open(os.path.join(tmpdir, "番組名_200102.ts"), "w") as f:
-                f.write("x" * 1000)
+            (Path(tmpdir) / "番組名_200101.ts").write_text("x" * 1000)
+            (Path(tmpdir) / "番組名_200102.ts").write_text("x" * 1000)
 
             manager = MagicMock()
             status_bar = MagicMock()
@@ -736,8 +709,8 @@ class TestListDupCand:
             manager.counter.side_effect = create_counter
 
             with patch("dupdel.ui._blinking_input", return_value="y"):
-                result, skipped = _list_dup_cand(tmpdir, manager)
-                assert len(result) == 1
+                result = _list_dup_cand(tmpdir, manager)
+                assert len(result.candidates) == 1
 
 
 class TestRunStatsMode:
@@ -755,8 +728,7 @@ class TestRunStatsMode:
         """ファイルがある場合"""
         with tempfile.TemporaryDirectory() as tmpdir:
             for i in range(3):
-                with open(os.path.join(tmpdir, f"test{i}.ts"), "w") as f:
-                    f.write("content")
+                (Path(tmpdir) / f"test{i}.ts").write_text("content")
 
             run_stats_mode(tmpdir)
             captured = capsys.readouterr()
@@ -766,10 +738,8 @@ class TestRunStatsMode:
         """類似ファイルがある場合"""
         with tempfile.TemporaryDirectory() as tmpdir:
             # 類似したファイル名を作成
-            with open(os.path.join(tmpdir, "番組名_200101.ts"), "w") as f:
-                f.write("x" * 1000)
-            with open(os.path.join(tmpdir, "番組名_200102.ts"), "w") as f:
-                f.write("x" * 1000)
+            (Path(tmpdir) / "番組名_200101.ts").write_text("x" * 1000)
+            (Path(tmpdir) / "番組名_200102.ts").write_text("x" * 1000)
 
             run_stats_mode(tmpdir)
             captured = capsys.readouterr()
@@ -779,10 +749,9 @@ class TestRunStatsMode:
         """ディレクトリに1ファイルのみ（スキップされる）"""
         with tempfile.TemporaryDirectory() as tmpdir:
             # サブディレクトリに1ファイルのみ
-            subdir = os.path.join(tmpdir, "subdir")
-            os.makedirs(subdir)
-            with open(os.path.join(subdir, "single.ts"), "w") as f:
-                f.write("content")
+            subdir = Path(tmpdir) / "subdir"
+            subdir.mkdir()
+            (subdir / "single.ts").write_text("content")
 
             run_stats_mode(tmpdir)
             captured = capsys.readouterr()
@@ -793,12 +762,10 @@ class TestRunStatsMode:
         with tempfile.TemporaryDirectory() as tmpdir:
             # 長いディレクトリ名を作成
             long_name = "a" * 100
-            long_dir = os.path.join(tmpdir, long_name)
-            os.makedirs(long_dir)
-            with open(os.path.join(long_dir, "番組名_200101.ts"), "w") as f:
-                f.write("x" * 1000)
-            with open(os.path.join(long_dir, "番組名_200102.ts"), "w") as f:
-                f.write("x" * 1000)
+            long_dir = Path(tmpdir) / long_name
+            long_dir.mkdir()
+            (long_dir / "番組名_200101.ts").write_text("x" * 1000)
+            (long_dir / "番組名_200102.ts").write_text("x" * 1000)
 
             run_stats_mode(tmpdir)
             captured = capsys.readouterr()
@@ -832,7 +799,10 @@ class TestRunInteractive:
         with tempfile.TemporaryDirectory() as tmpdir:
             shutdown_event.set()
             try:
-                with patch("dupdel.ui._list_dup_cand", return_value=([], [])):
+                with patch(
+                    "dupdel.ui._list_dup_cand",
+                    return_value=ListDupCandResult([], []),
+                ):
                     run_interactive(tmpdir)
                 captured = capsys.readouterr()
                 assert "中断しました" in captured.out
@@ -841,38 +811,39 @@ class TestRunInteractive:
 
     def test_with_candidates_confirmed(self, capsys):
         """削除候補があり確認された場合"""
-        import difflib
         from dupdel.constants import shutdown_event
 
         shutdown_event.clear()
         with tempfile.TemporaryDirectory() as tmpdir:
-            test_file = os.path.join(tmpdir, "test.ts")
-            with open(test_file, "w") as f:
-                f.write("content")
+            test_file = Path(tmpdir) / "test.ts"
+            test_file.write_text("content")
 
             sm = difflib.SequenceMatcher(None, "test.ts", "test.ts")
-            dup_cand = [
-                {
-                    "path": test_file,
-                    "name": "test.ts",
-                    "basename": "test.ts",
-                    "size": 7,
-                    "mtime": 1000.0,
-                    "index": 1,
-                    "sm": sm,
-                },
-                {
-                    "path": test_file,
-                    "name": "test.ts",
-                    "basename": "test.ts",
-                    "size": 7,
-                    "mtime": 1001.0,
-                    "index": 2,
-                    "sm": sm,
-                },
-            ]
+            dup_cand = (
+                FileInfo(
+                    path=str(test_file),
+                    name="test.ts",
+                    basename="test.ts",
+                    size=7,
+                    mtime=1000.0,
+                    index=1,
+                    sm=sm,
+                ),
+                FileInfo(
+                    path=str(test_file),
+                    name="test.ts",
+                    basename="test.ts",
+                    size=7,
+                    mtime=1001.0,
+                    index=2,
+                    sm=sm,
+                ),
+            )
 
-            with patch("dupdel.ui._list_dup_cand", return_value=([dup_cand], [])):
+            with patch(
+                "dupdel.ui._list_dup_cand",
+                return_value=ListDupCandResult([dup_cand], []),
+            ):
                 with patch("dupdel.ui._exec_delete", return_value=True):
                     run_interactive(tmpdir)
             captured = capsys.readouterr()
@@ -886,7 +857,10 @@ class TestRunInteractive:
         with tempfile.TemporaryDirectory() as tmpdir:
             skipped = [("/path/file1", "/path/file2")]
 
-            with patch("dupdel.ui._list_dup_cand", return_value=([], skipped)):
+            with patch(
+                "dupdel.ui._list_dup_cand",
+                return_value=ListDupCandResult([], skipped),
+            ):
                 with patch("dupdel.ui.cache_pairs_bulk", return_value=1) as mock_cache:
                     run_interactive(tmpdir)
                     mock_cache.assert_called_once_with(skipped)
@@ -895,39 +869,40 @@ class TestRunInteractive:
 
     def test_with_skipped_pairs_not_saved(self, capsys):
         """削除拒否によりキャッシュ保存されない場合"""
-        import difflib
         from dupdel.constants import shutdown_event
 
         shutdown_event.clear()
         with tempfile.TemporaryDirectory() as tmpdir:
-            test_file = os.path.join(tmpdir, "test.ts")
-            with open(test_file, "w") as f:
-                f.write("content")
+            test_file = Path(tmpdir) / "test.ts"
+            test_file.write_text("content")
 
             sm = difflib.SequenceMatcher(None, "test.ts", "test.ts")
-            dup_cand = [
-                {
-                    "path": test_file,
-                    "name": "test.ts",
-                    "basename": "test.ts",
-                    "size": 7,
-                    "mtime": 1000.0,
-                    "index": 1,
-                    "sm": sm,
-                },
-                {
-                    "path": test_file,
-                    "name": "test.ts",
-                    "basename": "test.ts",
-                    "size": 7,
-                    "mtime": 1001.0,
-                    "index": 2,
-                    "sm": sm,
-                },
-            ]
+            dup_cand = (
+                FileInfo(
+                    path=str(test_file),
+                    name="test.ts",
+                    basename="test.ts",
+                    size=7,
+                    mtime=1000.0,
+                    index=1,
+                    sm=sm,
+                ),
+                FileInfo(
+                    path=str(test_file),
+                    name="test.ts",
+                    basename="test.ts",
+                    size=7,
+                    mtime=1001.0,
+                    index=2,
+                    sm=sm,
+                ),
+            )
             skipped = [("/path/file1", "/path/file2")]
 
-            with patch("dupdel.ui._list_dup_cand", return_value=([dup_cand], skipped)):
+            with patch(
+                "dupdel.ui._list_dup_cand",
+                return_value=ListDupCandResult([dup_cand], skipped),
+            ):
                 with patch("dupdel.ui._exec_delete", return_value=False):
                     run_interactive(tmpdir)
             captured = capsys.readouterr()

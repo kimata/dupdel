@@ -4,20 +4,18 @@ core.py のユニットテスト
 """
 # ruff: noqa: S101
 
-import os
 import tempfile
+from pathlib import Path
 from unittest.mock import patch
-
-import pytest
 
 from dupdel.core import (
     PrecomputedFileInfo,
-    compare_pair,
     _expand_to_digit_group,
     _find_digit_group_in_range,
     _get_mtime_safe,
     _has_episode_number_diff,
     _has_zengo_diff,
+    compare_pair,
     count_valid_comparisons,
     find_dup_candidates_parallel,
     list_files,
@@ -258,14 +256,12 @@ class TestPrecomputeFileInfo:
         """基本的なファイル情報計算"""
         with tempfile.TemporaryDirectory() as tmpdir:
             # テストファイルを作成
-            file1 = os.path.join(tmpdir, "test1.txt")
-            file2 = os.path.join(tmpdir, "test2.txt")
-            with open(file1, "w") as f:
-                f.write("content1")
-            with open(file2, "w") as f:
-                f.write("content22")
+            file1 = Path(tmpdir) / "test1.txt"
+            file2 = Path(tmpdir) / "test2.txt"
+            file1.write_text("content1")
+            file2.write_text("content22")
 
-            file_list = [file1, file2]
+            file_list = [str(file1), str(file2)]
             result = precompute_file_info(file_list, tmpdir)
 
             assert len(result) == 2
@@ -277,16 +273,15 @@ class TestPrecomputeFileInfo:
     def test_with_progress_callback(self):
         """進捗コールバック付き"""
         with tempfile.TemporaryDirectory() as tmpdir:
-            file1 = os.path.join(tmpdir, "test.txt")
-            with open(file1, "w") as f:
-                f.write("content")
+            file1 = Path(tmpdir) / "test.txt"
+            file1.write_text("content")
 
             progress_count = [0]
 
             def callback(n):
                 progress_count[0] += n
 
-            result = precompute_file_info([file1], tmpdir, callback)
+            result = precompute_file_info([str(file1)], tmpdir, callback)
             assert len(result) == 1
             assert progress_count[0] == 1
 
@@ -301,13 +296,12 @@ class TestPrecomputeFileInfo:
         from dupdel.constants import shutdown_event
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            file1 = os.path.join(tmpdir, "test.txt")
-            with open(file1, "w") as f:
-                f.write("content")
+            file1 = Path(tmpdir) / "test.txt"
+            file1.write_text("content")
 
             shutdown_event.set()
             try:
-                result = precompute_file_info([file1], tmpdir)
+                result = precompute_file_info([str(file1)], tmpdir)
                 assert len(result) == 0
             finally:
                 shutdown_event.clear()
@@ -491,7 +485,7 @@ class TestComparePair:
         )
         result = compare_pair(info1, info2, 0.85)
         assert result is not None
-        assert result[0]["mtime"] < result[1]["mtime"]
+        assert result[0].mtime < result[1].mtime
 
     def test_ratio_filter(self):
         """quick_ratioは通るがratioで落ちるケース"""
@@ -569,12 +563,10 @@ class TestListFiles:
         """基本的なファイル一覧"""
         with tempfile.TemporaryDirectory() as tmpdir:
             # テストファイルを作成
-            file1 = os.path.join(tmpdir, "test1.txt")
-            file2 = os.path.join(tmpdir, "test2.txt")
-            with open(file1, "w") as f:
-                f.write("content1")
-            with open(file2, "w") as f:
-                f.write("content2")
+            file1 = Path(tmpdir) / "test1.txt"
+            file2 = Path(tmpdir) / "test2.txt"
+            file1.write_text("content1")
+            file2.write_text("content2")
 
             result = list_files(tmpdir)
             assert len(result) == 2
@@ -582,12 +574,10 @@ class TestListFiles:
     def test_hidden_files_excluded(self):
         """隠しファイルは除外"""
         with tempfile.TemporaryDirectory() as tmpdir:
-            visible = os.path.join(tmpdir, "visible.txt")
-            hidden = os.path.join(tmpdir, ".hidden.txt")
-            with open(visible, "w") as f:
-                f.write("content")
-            with open(hidden, "w") as f:
-                f.write("content")
+            visible = Path(tmpdir) / "visible.txt"
+            hidden = Path(tmpdir) / ".hidden.txt"
+            visible.write_text("content")
+            hidden.write_text("content")
 
             result = list_files(tmpdir)
             assert len(result) == 1
@@ -596,11 +586,10 @@ class TestListFiles:
     def test_hidden_directories_excluded(self):
         """隠しディレクトリは除外"""
         with tempfile.TemporaryDirectory() as tmpdir:
-            hidden_dir = os.path.join(tmpdir, ".hidden_dir")
-            os.makedirs(hidden_dir)
-            hidden_file = os.path.join(hidden_dir, "file.txt")
-            with open(hidden_file, "w") as f:
-                f.write("content")
+            hidden_dir = Path(tmpdir) / ".hidden_dir"
+            hidden_dir.mkdir()
+            hidden_file = hidden_dir / "file.txt"
+            hidden_file.write_text("content")
 
             result = list_files(tmpdir)
             assert len(result) == 0
@@ -608,14 +597,12 @@ class TestListFiles:
     def test_subdirectories(self):
         """サブディレクトリ"""
         with tempfile.TemporaryDirectory() as tmpdir:
-            subdir = os.path.join(tmpdir, "subdir")
-            os.makedirs(subdir)
-            file1 = os.path.join(tmpdir, "root.txt")
-            file2 = os.path.join(subdir, "sub.txt")
-            with open(file1, "w") as f:
-                f.write("content")
-            with open(file2, "w") as f:
-                f.write("content")
+            subdir = Path(tmpdir) / "subdir"
+            subdir.mkdir()
+            file1 = Path(tmpdir) / "root.txt"
+            file2 = subdir / "sub.txt"
+            file1.write_text("content")
+            file2.write_text("content")
 
             result = list_files(tmpdir)
             assert len(result) == 2
@@ -623,9 +610,8 @@ class TestListFiles:
     def test_with_progress_callback(self):
         """進捗コールバック付き"""
         with tempfile.TemporaryDirectory() as tmpdir:
-            file1 = os.path.join(tmpdir, "test.txt")
-            with open(file1, "w") as f:
-                f.write("content")
+            file1 = Path(tmpdir) / "test.txt"
+            file1.write_text("content")
 
             progress_count = [0]
 
@@ -641,9 +627,8 @@ class TestListFiles:
         from dupdel.constants import shutdown_event
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            file1 = os.path.join(tmpdir, "test.txt")
-            with open(file1, "w") as f:
-                f.write("content")
+            file1 = Path(tmpdir) / "test.txt"
+            file1.write_text("content")
 
             shutdown_event.set()
             try:
@@ -659,8 +644,7 @@ class TestListFiles:
         with tempfile.TemporaryDirectory() as tmpdir:
             # 複数ファイルを作成
             for i in range(5):
-                with open(os.path.join(tmpdir, f"test{i}.txt"), "w") as f:
-                    f.write("content")
+                (Path(tmpdir) / f"test{i}.txt").write_text("content")
 
             call_count = [0]
 
@@ -677,13 +661,12 @@ class TestListFiles:
                 shutdown_event.clear()
 
     def test_oserror_on_isfile(self):
-        """os.path.isfileでOSError"""
+        """Path.is_file()でOSError"""
         with tempfile.TemporaryDirectory() as tmpdir:
-            file1 = os.path.join(tmpdir, "test.txt")
-            with open(file1, "w") as f:
-                f.write("content")
+            file1 = Path(tmpdir) / "test.txt"
+            file1.write_text("content")
 
-            with patch("os.path.isfile", side_effect=OSError("Permission denied")):
+            with patch.object(Path, "is_file", side_effect=OSError("Permission denied")):
                 result = list_files(tmpdir)
                 assert len(result) == 0
 
@@ -693,19 +676,17 @@ class TestSortFilesByMtime:
 
     def test_sorting(self):
         """更新時刻でソート"""
+        import time
+
         with tempfile.TemporaryDirectory() as tmpdir:
-            file1 = os.path.join(tmpdir, "first.txt")
-            file2 = os.path.join(tmpdir, "second.txt")
+            file1 = Path(tmpdir) / "first.txt"
+            file2 = Path(tmpdir) / "second.txt"
 
-            with open(file1, "w") as f:
-                f.write("content")
-            import time
-
+            file1.write_text("content")
             time.sleep(0.01)
-            with open(file2, "w") as f:
-                f.write("content")
+            file2.write_text("content")
 
-            result = sort_files_by_mtime([file2, file1])
+            result = sort_files_by_mtime([str(file2), str(file1)])
             assert "first.txt" in result[0]
             assert "second.txt" in result[1]
 

@@ -5,11 +5,12 @@ import multiprocessing as mp
 import os
 import re
 from collections import Counter
+from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
-from typing import Any, Callable
+from pathlib import Path
 
-from .constants import DupCand, IGNORE_PAT, MATCH_TH, shutdown_event
+from .constants import IGNORE_PAT, MATCH_TH, DupCand, FileInfo, shutdown_event
 
 
 @dataclass
@@ -48,14 +49,15 @@ def precompute_file_info(
         if shutdown_event.is_set():
             break
         try:
-            name = os.path.basename(path)
-            stat = os.stat(path)
+            p = Path(path)
+            stat = p.stat()
+            name = p.name
             result.append(
                 PrecomputedFileInfo(
                     path=path,
-                    dir_path=os.path.dirname(path),
+                    dir_path=str(p.parent),
                     name=name,
-                    rel_name=os.path.relpath(path, dir_path),
+                    rel_name=str(p.relative_to(dir_path)),
                     normalized=re.sub(IGNORE_PAT, "", name),
                     size=stat.st_size,
                     mtime=stat.st_mtime,
@@ -92,9 +94,7 @@ def _expand_to_digit_group(name: str, start: int, end: int) -> tuple[int, int]:
     return start, end
 
 
-def _find_digit_group_in_range(
-    name: str, start: int, end: int
-) -> tuple[int, int] | None:
+def _find_digit_group_in_range(name: str, start: int, end: int) -> tuple[int, int] | None:
     """指定範囲内の数字を含む数字グループを見つける"""
     # 範囲内で最初の数字を見つける
     digit_pos = -1
@@ -157,9 +157,8 @@ def _has_episode_number_diff(name1: str, name2: str) -> bool:
             exp_start2, exp_end2 = _expand_to_digit_group(name2, j1, j1)
             exp_s2 = name2[exp_start2:exp_end2]
 
-            if exp_s2 == "" or exp_s2.isdigit():
-                if len(exp_s1) <= 2 and len(exp_s2) <= 2:
-                    return True
+            if (not exp_s2 or exp_s2.isdigit()) and len(exp_s1) <= 2 and len(exp_s2) <= 2:
+                return True
 
         elif tag == "insert":
             # 挿入された部分に数字が含まれる場合（例: #1 → #11）
@@ -176,16 +175,13 @@ def _has_episode_number_diff(name1: str, name2: str) -> bool:
             exp_start1, exp_end1 = _expand_to_digit_group(name1, i1, i1)
             exp_s1 = name1[exp_start1:exp_end1]
 
-            if exp_s1 == "" or exp_s1.isdigit():
-                if len(exp_s1) <= 2 and len(exp_s2) <= 2:
-                    return True
+            if (not exp_s1 or exp_s1.isdigit()) and len(exp_s1) <= 2 and len(exp_s2) <= 2:
+                return True
 
     return False
 
 
-def compare_pair(
-    info1: PrecomputedFileInfo, info2: PrecomputedFileInfo, match_th: float
-) -> DupCand | None:
+def compare_pair(info1: PrecomputedFileInfo, info2: PrecomputedFileInfo, match_th: float) -> DupCand | None:
     """2つのファイルを比較し、重複候補であれば返す"""
     # 長さベースの事前フィルタ
     len1, len2 = len(info1.normalized), len(info2.normalized)
@@ -224,26 +220,26 @@ def compare_pair(
 
     sm = difflib.SequenceMatcher(None, older.name, newer.name)
 
-    return [
-        {
-            "path": older.path,
-            "name": older.rel_name,
-            "basename": older.name,
-            "size": older.size,
-            "mtime": older.mtime,
-            "index": older.index,
-            "sm": sm,
-        },
-        {
-            "path": newer.path,
-            "name": newer.rel_name,
-            "basename": newer.name,
-            "size": newer.size,
-            "mtime": newer.mtime,
-            "index": newer.index,
-            "sm": sm,
-        },
-    ]
+    return (
+        FileInfo(
+            path=older.path,
+            name=older.rel_name,
+            basename=older.name,
+            size=older.size,
+            mtime=older.mtime,
+            index=older.index,
+            sm=sm,
+        ),
+        FileInfo(
+            path=newer.path,
+            name=newer.rel_name,
+            basename=newer.name,
+            size=newer.size,
+            mtime=newer.mtime,
+            index=newer.index,
+            sm=sm,
+        ),
+    )
 
 
 # ワーカープロセス用のグローバル変数
@@ -261,7 +257,7 @@ def _init_worker(
 
 
 def _worker_compare_range(
-    args: tuple[int, int, float]
+    args: tuple[int, int, float],
 ) -> tuple[list[DupCand], int]:  # pragma: no cover (別プロセスで実行)
     """ワーカー: 指定範囲のファイルを全後続ファイルと比較"""
     start_idx, end_idx, match_th = args
@@ -301,9 +297,7 @@ def find_dup_candidates_parallel(
     min_tasks = max(200, num_workers * 50)
     # 1タスクあたり最大50万比較に制限（大規模データでも頻繁に更新）
     max_comparisons_per_task = 500_000
-    target_per_task = min(
-        max_comparisons_per_task, max(1, total_comparisons // min_tasks)
-    )
+    target_per_task = min(max_comparisons_per_task, max(1, total_comparisons // min_tasks))
 
     # 開始インデックスごとの比較数: n-1, n-2, ..., 1
     tasks: list[tuple[int, int, float]] = []
@@ -347,7 +341,7 @@ def find_dup_candidates_parallel(
 def _get_mtime_safe(path: str) -> float:
     """ファイルの更新時刻を取得（エラー時は0を返す）"""
     try:
-        return os.path.getmtime(path)
+        return Path(path).stat().st_mtime
     except OSError:
         return 0
 
@@ -370,10 +364,10 @@ def list_files(
             # 隠しファイルをスキップ
             if name.startswith("."):
                 continue
-            path = os.path.join(root, name)
+            p = Path(root) / name
             try:
-                if os.path.isfile(path):
-                    file_path_list.append(path)
+                if p.is_file():
+                    file_path_list.append(str(p))
                     if progress_callback is not None:
                         progress_callback(1)
             except OSError:

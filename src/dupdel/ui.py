@@ -1,9 +1,11 @@
 """UI/インタラクション処理"""
 
+import contextlib
 import multiprocessing as mp
-import os
 import shutil
 import sys
+from collections import defaultdict
+from pathlib import Path
 
 import enlighten
 
@@ -16,10 +18,12 @@ from .constants import (
     COLOR_SUCCESS,
     COLOR_TITLE,
     COLOR_WARNING,
-    DupCand,
     MATCH_TH,
     SIZE_TH,
     TRASH_DIR,
+    DirStats,
+    DupCand,
+    ListDupCandResult,
     shutdown_event,
 )
 from .core import (
@@ -58,21 +62,19 @@ def _blinking_input(prompt: str = "") -> str:
     sys.stdout.flush()
 
     # 入力を取得（ユーザーの入力が _ を上書きする）
-    return input()
+    return input().strip().lower()
 
 
 def _print_dup_cand(dup_cand: DupCand, index: int, total: int) -> None:
     """重複候補を表示"""
-    ratio = round(dup_cand[0]["sm"].ratio() * 100)
-    ratio_color = (
-        COLOR_SUCCESS if ratio >= 95 else COLOR_WARNING if ratio >= 90 else COLOR_DIM
-    )
+    ratio = round(dup_cand[0].sm.ratio() * 100)
+    ratio_color = COLOR_SUCCESS if ratio >= 95 else COLOR_WARNING if ratio >= 90 else COLOR_DIM
 
     print(f"\n{'─' * get_term_width()}")
     print(f"[{index:3d}/{total:3d}] {ratio_color}📊 類似度: {ratio}%{COLOR_RESET}")
 
-    size_diff = abs(dup_cand[0]["size"] - dup_cand[1]["size"])
-    max_size = max(dup_cand[0]["size"], dup_cand[1]["size"])
+    size_diff = abs(dup_cand[0].size - dup_cand[1].size)
+    max_size = max(dup_cand[0].size, dup_cand[1].size)
     size_ratio = 100 * size_diff / max_size if max_size > 0 else 0
 
     size_color = COLOR_ERROR if size_diff > SIZE_TH else COLOR_DIM
@@ -86,7 +88,8 @@ def _print_dup_cand(dup_cand: DupCand, index: int, total: int) -> None:
     max_name_width = term_width - prefix_width - 1
 
     # ディレクトリ部分を取得（同じディレクトリなので共通）
-    dir_part = os.path.dirname(dup_cand[0]["name"])
+    parent = Path(dup_cand[0].name).parent
+    dir_part = str(parent) if str(parent) != "." else ""
     if dir_part:
         dir_prefix = dir_part + "/"
         dir_prefix_width = get_visible_width(dir_prefix)
@@ -100,14 +103,10 @@ def _print_dup_cand(dup_cand: DupCand, index: int, total: int) -> None:
         dir_prefix_width = 0
 
     # ベースネーム部分を差分着色で表示
-    sm = dup_cand[0]["sm"]
+    sm = dup_cand[0].sm
     basename_max_width = max(20, max_name_width - dir_prefix_width)  # 最低20文字は確保
-    name_old = dir_prefix + build_diff_text(
-        dup_cand[0]["basename"], sm, 0, basename_max_width
-    )
-    name_new = dir_prefix + build_diff_text(
-        dup_cand[1]["basename"], sm, 1, basename_max_width
-    )
+    name_old = dir_prefix + build_diff_text(dup_cand[0].basename, sm, 0, basename_max_width)
+    name_new = dir_prefix + build_diff_text(dup_cand[1].basename, sm, 1, basename_max_width)
 
     print(f"\n  📁 古: {name_old}")
     print(f"  📄 新: {name_new}")
@@ -118,11 +117,7 @@ def _handle_interrupt(manager: enlighten.Manager | None = None) -> bool:
     try:
         sys.stdout.write("\n\n")  # ステータスバーとの間に空行
         sys.stdout.flush()
-        ans = (
-            _blinking_input(f"{COLOR_WARNING}⏸️  中断しますか？ [y/N]: {COLOR_RESET}")
-            .strip()
-            .lower()
-        )
+        ans = _blinking_input(f"{COLOR_WARNING}⏸️  中断しますか？ [y/N]: {COLOR_RESET}")
         if ans == "y":
             print(f"{COLOR_DIM}👋 終了処理中...{COLOR_RESET}")
             shutdown_event.set()
@@ -139,13 +134,11 @@ def _handle_interrupt(manager: enlighten.Manager | None = None) -> bool:
         return True
 
 
-def _list_dup_cand(
-    dir_path: str, manager: enlighten.Manager
-) -> tuple[list[DupCand], list[tuple[str, str]]]:
+def _list_dup_cand(dir_path: str, manager: enlighten.Manager) -> ListDupCandResult:
     """重複候補を対話的に選択
 
     Returns:
-        (削除候補リスト, スキップしたペアのリスト)
+        ListDupCandResult: 削除候補リストとスキップしたペアのリスト
     """
     # キャッシュDBを初期化
     init_cache_db()
@@ -174,7 +167,7 @@ def _list_dup_cand(
         counter.close()
         tool_status.close()
         dir_status.close()
-        return [], []
+        return ListDupCandResult([], [])
 
     counter.desc = "📂 ソート中"
     counter.refresh()
@@ -199,7 +192,7 @@ def _list_dup_cand(
     if total_files < 2:
         tool_status.close()
         dir_status.close()
-        return [], []
+        return ListDupCandResult([], [])
 
     # 有効な比較ペア数をカウント
     tool_status.update(status="比較対象をカウント中...")
@@ -209,7 +202,7 @@ def _list_dup_cand(
         tool_status.update(status="✨ 比較対象がありませんでした")
         tool_status.close()
         dir_status.close()
-        return [], []
+        return ListDupCandResult([], [])
 
     tool_status.update(status="重複ファイルを調べています...")
 
@@ -248,9 +241,7 @@ def _list_dup_cand(
     try:
         # フェーズ1: 並列で比較処理
         num_workers = min(mp.cpu_count(), 8)
-        pending_questions = find_dup_candidates_parallel(
-            file_infos, progress_callback, num_workers
-        )
+        pending_questions = find_dup_candidates_parallel(file_infos, progress_callback, num_workers)
 
         # 最終進捗を表示
         compare_bar.count = total_comparisons
@@ -260,7 +251,7 @@ def _list_dup_cand(
         cached_count = 0
         filtered_questions: list[DupCand] = []
         for dup_cand in pending_questions:
-            if is_pair_cached(dup_cand[0]["path"], dup_cand[1]["path"]):
+            if is_pair_cached(dup_cand[0].path, dup_cand[1].path):
                 cached_count += 1
             else:
                 filtered_questions.append(dup_cand)
@@ -273,12 +264,12 @@ def _list_dup_cand(
             print(f"\n{COLOR_DIM}📦 キャッシュ済み: {cached_count} 件をスキップ{COLOR_RESET}")
 
         if shutdown_event.is_set():
-            return dup_cand_list, []  # 中断時はキャッシュしない
+            return ListDupCandResult(dup_cand_list, [])  # 中断時はキャッシュしない
 
         # 質問がない場合
         if not pending_questions:
             tool_status.update(status="✨ 重複候補は見つかりませんでした")
-            return dup_cand_list, skipped_pairs
+            return ListDupCandResult(dup_cand_list, skipped_pairs)
 
         # フェーズ2: 質問に回答
         tool_status.update(status="🤔 削除して良いか確認お願いします")
@@ -287,7 +278,7 @@ def _list_dup_cand(
             total=len(pending_questions),
             desc="💬 回答",
             unit="件",
-            bar_format="{desc}{desc_pad}{percentage:3.0f}%|{bar}| {count:,d}/{total:,d} {unit} [{elapsed}<{eta}]",
+            bar_format="{desc}{desc_pad}{percentage:3.0f}%|{bar}| {count:,d}/{total:,d} {unit} [{elapsed}<{eta}]",  # noqa: E501
         )
 
         for i, dup_cand in enumerate(pending_questions, 1):
@@ -297,20 +288,21 @@ def _list_dup_cand(
             _print_dup_cand(dup_cand, i, len(pending_questions))
 
             print()  # ステータスバーとの間に空行
-            ans = _blinking_input(f"{COLOR_TITLE}🤔 同一？(後者が削除候補) [y/n/q]: {COLOR_RESET}")
+            prompt = f"{COLOR_TITLE}🤔 同一？(後者が削除候補) [y/n/q]: {COLOR_RESET}"
+            ans = _blinking_input(prompt)
 
-            assert qa_bar is not None
-            qa_bar.update()
-            if ans.lower() == "y":
+            if qa_bar is not None:
+                qa_bar.update()
+            if ans == "y":
                 dup_cand_list.append(dup_cand)
                 delete_counter.count = len(dup_cand_list)
                 delete_counter.refresh()
                 print(f"{COLOR_SUCCESS}✅ 削除候補に追加{COLOR_RESET}")
-            elif ans.lower() == "q":
+            elif ans == "q":
                 break
             else:
                 # 「n」回答時はスキップリストに追加（正常終了時にキャッシュ保存）
-                skipped_pairs.append((dup_cand[0]["path"], dup_cand[1]["path"]))
+                skipped_pairs.append((dup_cand[0].path, dup_cand[1].path))
                 print(f"{COLOR_DIM}⏭️  スキップ{COLOR_RESET}")
 
             print()  # ステータスバーとの間に空行
@@ -325,20 +317,16 @@ def _list_dup_cand(
         tool_status.close()
         dir_status.close()
         compare_bar.close()
-        try:
+        with contextlib.suppress(ValueError, RuntimeError):
             question_counter.close()
-        except Exception:
-            pass
         if qa_bar is not None:
             qa_bar.close()
         delete_counter.close()
 
-    return dup_cand_list, skipped_pairs
+    return ListDupCandResult(dup_cand_list, skipped_pairs)
 
 
-def _exec_delete(
-    dup_cand_list: list[DupCand], trash_dir_path: str, manager: enlighten.Manager
-) -> bool:
+def _exec_delete(dup_cand_list: list[DupCand], trash_dir_path: str, manager: enlighten.Manager) -> bool:
     """削除を実行
 
     Returns:
@@ -349,7 +337,7 @@ def _exec_delete(
         print(f"\n{COLOR_DIM}📭 削除候補がありません{COLOR_RESET}")
         return True  # 削除候補なしは正常終了
 
-    os.makedirs(trash_dir_path, exist_ok=True)
+    Path(trash_dir_path).mkdir(parents=True, exist_ok=True)
     process_all = False
     has_rejection = False  # 「n」応答があったか
 
@@ -365,9 +353,9 @@ def _exec_delete(
         progress.update()
         _print_dup_cand(dup_cand, progress.count, len(dup_cand_list))
 
-        src_path = dup_cand[1]["path"]
+        src_path = Path(dup_cand[1].path)
 
-        if not os.path.isfile(src_path):
+        if not src_path.is_file():
             print(f"{COLOR_WARNING}⚠️  ファイルが見つかりません{COLOR_RESET}")
             continue
 
@@ -375,9 +363,7 @@ def _exec_delete(
         if not process_all:
             sys.stdout.write("\n")  # ステータスバーとの間に空行
             sys.stdout.flush()
-            ans = _blinking_input(
-                f"{COLOR_ERROR}🗑️  後者を削除しますか？[y/n/a]: {COLOR_RESET}"
-            ).lower()
+            ans = _blinking_input(f"{COLOR_ERROR}🗑️  後者を削除しますか？[y/n/a]: {COLOR_RESET}")
             should_delete = ans in ("y", "a")
             if ans == "a":
                 process_all = True
@@ -386,7 +372,7 @@ def _exec_delete(
                 has_rejection = True
 
         if should_delete:
-            dst_path = os.path.join(trash_dir_path, os.path.basename(src_path))
+            dst_path = Path(trash_dir_path) / src_path.name
             shutil.move(src_path, dst_path)
             deleted_count += 1
             print(f"{COLOR_SUCCESS}🗑️  削除しました{COLOR_RESET}")
@@ -415,10 +401,8 @@ def run_stats_mode(dir_path: str) -> None:
     file_infos = precompute_file_info(file_path_list, dir_path)
 
     # ディレクトリ毎にグループ化
-    dir_to_infos: dict[str, list[PrecomputedFileInfo]] = {}
+    dir_to_infos: defaultdict[str, list[PrecomputedFileInfo]] = defaultdict(list)
     for info in file_infos:
-        if info.dir_path not in dir_to_infos:
-            dir_to_infos[info.dir_path] = []
         dir_to_infos[info.dir_path].append(info)
 
     print(f"   合計: {len(dir_to_infos)} ディレクトリ")
@@ -426,9 +410,7 @@ def run_stats_mode(dir_path: str) -> None:
 
     # ディレクトリ毎に重複候補を数える
     print("🔍 重複候補をカウント中...")
-    results: list[
-        tuple[str, int, int, int]
-    ] = []  # (dir, file_count, pairs, candidates)
+    results: list[DirStats] = []
 
     # ファイル数が多い順にソート（進捗がわかりやすいように）
     sorted_dirs = sorted(dir_to_infos.items(), key=lambda x: len(x[1]), reverse=True)
@@ -439,7 +421,7 @@ def run_stats_mode(dir_path: str) -> None:
         if len(infos) < 2:
             continue
 
-        rel_path = os.path.relpath(dir_path_key, dir_path)
+        rel_path = str(Path(dir_path_key).relative_to(dir_path))
         pairs_total = len(infos) * (len(infos) - 1) // 2
         print(
             f"   [{processed}/{len(dir_to_infos)}] {rel_path} ({len(infos)} files, {pairs_total} pairs)...",
@@ -459,10 +441,10 @@ def run_stats_mode(dir_path: str) -> None:
         print(f" → {candidates} 候補")
 
         if candidates > 0:
-            results.append((rel_path, len(infos), pairs_checked, candidates))
+            results.append(DirStats(rel_path, len(infos), pairs_checked, candidates))
 
     # 候補数でソート
-    results.sort(key=lambda x: x[3], reverse=True)
+    results.sort(key=lambda x: x.candidates, reverse=True)
 
     col_width = 40
     print()
@@ -471,16 +453,16 @@ def run_stats_mode(dir_path: str) -> None:
     print("=" * 80)
 
     total_candidates = 0
-    for rel_path, file_count, pairs, candidates in results:
-        total_candidates += candidates
+    for stats in results:
+        total_candidates += stats.candidates
         # 長いパスは表示幅で省略
-        display_path = rel_path
+        display_path = stats.rel_path
         while get_visible_width(display_path) > col_width - 3:
             display_path = display_path[1:]
-        if display_path != rel_path:
+        if display_path != stats.rel_path:
             display_path = "..." + display_path
         print(
-            f"{pad_to_width(display_path, col_width)} {file_count:>10} {pairs:>10} {candidates:>10}"
+            f"{pad_to_width(display_path, col_width)} {stats.file_count:>10} {stats.pairs:>10} {stats.candidates:>10}"  # noqa: E501
         )
 
     print("=" * 80)
@@ -490,21 +472,21 @@ def run_stats_mode(dir_path: str) -> None:
 def run_interactive(target_dir_path: str) -> None:
     """対話モードで実行"""
     manager = enlighten.Manager()
-    skipped_pairs: list[tuple[str, str]] = []
+    result = ListDupCandResult([], [])
     should_save_cache = False
 
     try:
-        dup_cand_list, skipped_pairs = _list_dup_cand(target_dir_path, manager)
+        result = _list_dup_cand(target_dir_path, manager)
 
         if shutdown_event.is_set():
             print(f"\n{COLOR_WARNING}⏹️  中断しました{COLOR_RESET}")
             return
 
-        if dup_cand_list:
+        if result.candidates:
             print(f"\n{COLOR_WARNING}{'─' * 50}{COLOR_RESET}")
             print(f"{COLOR_WARNING}⚠️  削除の最終確認{COLOR_RESET}")
             print(f"{COLOR_WARNING}{'─' * 50}{COLOR_RESET}")
-            all_confirmed = _exec_delete(dup_cand_list, TRASH_DIR, manager)
+            all_confirmed = _exec_delete(result.candidates, TRASH_DIR, manager)
             should_save_cache = all_confirmed
         else:
             print(f"\n{COLOR_DIM}✨ 重複候補は見つかりませんでした{COLOR_RESET}")
@@ -516,10 +498,10 @@ def run_interactive(target_dir_path: str) -> None:
             sys.exit(130)
     finally:
         # キャッシュ保存（正常終了時のみ）
-        if should_save_cache and skipped_pairs:
-            saved_count = cache_pairs_bulk(skipped_pairs)
+        if should_save_cache and result.skipped_pairs:
+            saved_count = cache_pairs_bulk(result.skipped_pairs)
             print(f"{COLOR_DIM}📦 キャッシュに {saved_count} 件を保存しました{COLOR_RESET}")
-        elif skipped_pairs:
+        elif result.skipped_pairs:
             print(f"{COLOR_WARNING}⚠️  キャッシュは保存されませんでした{COLOR_RESET}")
 
         manager.stop()

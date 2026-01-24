@@ -1,13 +1,18 @@
 """定数・型定義・グローバル状態"""
 
+import difflib
 import threading
-from typing import Any
+from dataclasses import dataclass
 
 # 閾値
 SIZE_TH = 200 * 1024 * 1024  # サイズ差警告閾値 (200MB)
 MATCH_TH = 0.85  # ファイル名類似度閾値
 
-# 無視するパターン（数字、スペース、放送局記号など）
+# 無視するパターン:
+# - \d: 数字
+# - _ 　: アンダースコア、半角/全角スペース
+# - 🈑🈞字再前後: 放送局記号・字幕表記
+# - []: 角括弧
 IGNORE_PAT = r"[\d_ 　🈑🈞字再前後\[\]]"
 
 # 削除先（ゴミ箱）
@@ -27,9 +32,41 @@ COLOR_DIFF_DELETE = "\033[38;5;174m"  # ライトピンク
 COLOR_DIFF_REPLACE = "\033[38;5;114m"  # ペールグリーン
 COLOR_DIFF_INSERT = "\033[38;5;110m"  # ライトスカイブルー
 
-# 型エイリアス
-FileInfo = dict[str, Any]
-DupCand = list[FileInfo]
+
+# 型定義
+@dataclass
+class FileInfo:
+    """重複候補のファイル情報"""
+
+    path: str
+    name: str  # 相対パス
+    basename: str  # ファイル名
+    size: int
+    mtime: float
+    index: int
+    sm: difflib.SequenceMatcher
+
+
+DupCand = tuple[FileInfo, FileInfo]  # (古いファイル, 新しいファイル)
+
+
+@dataclass
+class ListDupCandResult:
+    """重複候補リストと処理結果"""
+
+    candidates: list[DupCand]
+    skipped_pairs: list[tuple[str, str]]
+
+
+@dataclass
+class DirStats:
+    """ディレクトリ統計情報"""
+
+    rel_path: str
+    file_count: int
+    pairs: int
+    candidates: int
+
 
 # グローバル停止フラグ
 shutdown_event = threading.Event()
