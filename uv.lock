@@ -627,7 +627,7 @@ dev = [
 requires-dist = [
     { name = "docopt-ng", specifier = ">=0.9.0" },
     { name = "enlighten", specifier = ">=1.14.1" },
-    { name = "my-lib", git = "https://github.com/kimata/my-py-lib?rev=ce3072d5366b9d86e1217d8bf2f07a24f5d3b483" },
+    { name = "my-lib", git = "https://github.com/kimata/my-py-lib?rev=3db13bd92e445b2a20382163cb6846a82fc55d30" },
 ]
 
 [package.metadata.requires-dev]
@@ -1396,7 +1396,7 @@ wheels = [
 [[package]]
 name = "my-lib"
 version = "0.2.2"
-source = { git = "https://github.com/kimata/my-py-lib?rev=ce3072d5366b9d86e1217d8bf2f07a24f5d3b483#ce3072d5366b9d86e1217d8bf2f07a24f5d3b483" }
+source = { git = "https://github.com/kimata/my-py-lib?rev=3db13bd92e445b2a20382163cb6846a82fc55d30#3db13bd92e445b2a20382163cb6846a82fc55d30" }
 dependencies = [
     { name = "coloredlogs" },
     { name = "dacite" },
