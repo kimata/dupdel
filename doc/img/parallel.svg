@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 540" font-family="-apple-system, 'Segoe UI', 'Hiragino Sans', 'Noto Sans CJK JP', sans-serif">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#898781"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="900" height="540" fill="#fcfcfb"/>
+
+  <!-- 入力 -->
+  <rect x="30" y="30" width="250" height="50" rx="8" fill="#e8f1fb" stroke="#2a78d6" stroke-width="1.5"/>
+  <text x="155" y="51" text-anchor="middle" font-size="13" font-weight="700" fill="#0b0b0b">file_infos（全ファイル）</text>
+  <text x="155" y="69" text-anchor="middle" font-size="11" fill="#52514e">list[PrecomputedFileInfo]</text>
+
+  <!-- グループ化 -->
+  <rect x="330" y="30" width="250" height="50" rx="8" fill="none" stroke="#c3c2b7" stroke-width="1.5"/>
+  <text x="455" y="51" text-anchor="middle" font-size="13" font-weight="700" fill="#0b0b0b">ディレクトリ毎にグループ化</text>
+  <text x="455" y="69" text-anchor="middle" font-size="11" fill="#52514e">2ファイル以上のグループのみ対象</text>
+  <line x1="280" y1="55" x2="326" y2="55" stroke="#898781" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- タスク分割 -->
+  <rect x="630" y="30" width="250" height="50" rx="8" fill="none" stroke="#c3c2b7" stroke-width="1.5"/>
+  <text x="755" y="51" text-anchor="middle" font-size="13" font-weight="700" fill="#0b0b0b">タスク分割</text>
+  <text x="755" y="69" text-anchor="middle" font-size="10" fill="#52514e">(グループ番号, 開始行, 終了行, 閾値)</text>
+  <line x1="580" y1="55" x2="626" y2="55" stroke="#898781" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- タスク分割の説明 -->
+  <g font-size="10.5" fill="#898781">
+    <text x="630" y="102">・1タスクの比較数は最大 100,000</text>
+    <text x="630" y="118">・目標タスク数は max(200, ワーカー数×50)</text>
+    <text x="630" y="134">・タスクはグループをまたがない</text>
+  </g>
+
+  <!-- グループの図示 -->
+  <g font-size="10.5">
+    <rect x="330" y="100" width="72" height="56" rx="6" fill="#e2f5ee" stroke="#1baf7a"/>
+    <text x="366" y="122" text-anchor="middle" fill="#0b0b0b">dirA</text>
+    <text x="366" y="140" text-anchor="middle" fill="#52514e">m₁ 件</text>
+    <rect x="412" y="100" width="72" height="56" rx="6" fill="#e2f5ee" stroke="#1baf7a"/>
+    <text x="448" y="122" text-anchor="middle" fill="#0b0b0b">dirB</text>
+    <text x="448" y="140" text-anchor="middle" fill="#52514e">m₂ 件</text>
+    <rect x="494" y="100" width="72" height="56" rx="6" fill="#e2f5ee" stroke="#1baf7a"/>
+    <text x="530" y="122" text-anchor="middle" fill="#0b0b0b">…</text>
+    <text x="530" y="140" text-anchor="middle" fill="#52514e"> </text>
+    <text x="448" y="176" text-anchor="middle" fill="#898781">比較はグループ内のみ: Σ mᵢ(mᵢ−1)/2 組</text>
+  </g>
+
+  <!-- Executor -->
+  <rect x="30" y="210" width="850" height="180" rx="10" fill="#f0efec" stroke="#c3c2b7" stroke-width="1.5"/>
+  <text x="50" y="236" font-size="13" font-weight="700" fill="#0b0b0b">ProcessPoolExecutor（最大 min(CPU数, 8) ワーカー）</text>
+  <text x="50" y="256" font-size="11" fill="#52514e" font-family="monospace">initializer=_init_worker: グループ一覧を各ワーカーへ一度だけ転送 + SIGINT を無視（SIG_IGN）</text>
+
+  <!-- ワーカー箱 -->
+  <g font-size="11.5" fill="#0b0b0b">
+    <rect x="60"  y="280" width="180" height="80" rx="8" fill="#fcfcfb" stroke="#1baf7a" stroke-width="1.5"/>
+    <text x="150" y="304" text-anchor="middle" font-weight="600">ワーカー 1</text>
+    <text x="150" y="324" text-anchor="middle" font-size="10" font-family="monospace" fill="#52514e">_worker_compare_range()</text>
+    <text x="150" y="344" text-anchor="middle" font-size="10.5" fill="#898781">compare_pair() を範囲実行</text>
+
+    <rect x="270" y="280" width="180" height="80" rx="8" fill="#fcfcfb" stroke="#1baf7a" stroke-width="1.5"/>
+    <text x="360" y="304" text-anchor="middle" font-weight="600">ワーカー 2</text>
+    <text x="360" y="324" text-anchor="middle" font-size="10" font-family="monospace" fill="#52514e">_worker_compare_range()</text>
+    <text x="360" y="344" text-anchor="middle" font-size="10.5" fill="#898781">compare_pair() を範囲実行</text>
+
+    <text x="500" y="324" font-size="16" fill="#898781">…</text>
+
+    <rect x="560" y="280" width="180" height="80" rx="8" fill="#fcfcfb" stroke="#1baf7a" stroke-width="1.5"/>
+    <text x="650" y="304" text-anchor="middle" font-weight="600">ワーカー N（≤8）</text>
+    <text x="650" y="324" text-anchor="middle" font-size="10" font-family="monospace" fill="#52514e">_worker_compare_range()</text>
+    <text x="650" y="344" text-anchor="middle" font-size="10.5" fill="#898781">compare_pair() を範囲実行</text>
+  </g>
+
+  <!-- タスク → Executor -->
+  <path d="M 755 80 C 755 140, 760 170, 770 206" stroke="#898781" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+  <text x="800" y="150" font-size="10.5" fill="#898781">submit()</text>
+
+  <!-- 収集 -->
+  <rect x="30" y="430" width="440" height="80" rx="8" fill="#e8f1fb" stroke="#2a78d6" stroke-width="1.5"/>
+  <text x="250" y="454" text-anchor="middle" font-size="13" font-weight="700" fill="#0b0b0b">メインプロセスで収集（as_completed）</text>
+  <text x="250" y="474" text-anchor="middle" font-size="11" fill="#52514e">タスク完了ごとに progress_callback(比較数, 検出数) を呼ぶ</text>
+  <text x="250" y="493" text-anchor="middle" font-size="11" fill="#52514e">shutdown_event を検知したらループを抜ける</text>
+  <line x1="250" y1="390" x2="250" y2="426" stroke="#898781" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="270" y="412" font-size="10.5" fill="#898781">(候補リスト, 比較数)</text>
+
+  <!-- ソート -->
+  <rect x="530" y="430" width="350" height="80" rx="8" fill="#e2f5ee" stroke="#1baf7a" stroke-width="2"/>
+  <text x="705" y="459" text-anchor="middle" font-size="13" font-weight="700" fill="#0b0b0b">パス順にソートして返却</text>
+  <text x="705" y="481" text-anchor="middle" font-size="11" fill="#52514e">as_completed は完了順のため、</text>
+  <text x="705" y="497" text-anchor="middle" font-size="11" fill="#52514e">質問の並びを決定的にする</text>
+  <line x1="470" y1="470" x2="526" y2="470" stroke="#898781" stroke-width="1.5" marker-end="url(#arr)"/>
+</svg>

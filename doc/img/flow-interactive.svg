@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 470" font-family="-apple-system, 'Segoe UI', 'Hiragino Sans', 'Noto Sans CJK JP', sans-serif">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#898781"/>
+    </marker>
+    <marker id="arrb" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#2a78d6"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="900" height="470" fill="#fcfcfb"/>
+
+  <!-- フェーズ帯 -->
+  <g font-size="11" font-weight="700">
+    <rect x="20" y="20" width="860" height="22" rx="4" fill="#e8f1fb"/>
+    <text x="30" y="36" fill="#2a78d6">フェーズ1: 収集と比較（_list_dup_cand 前半）</text>
+    <rect x="20" y="230" width="560" height="22" rx="4" fill="#edeaf9"/>
+    <text x="30" y="246" fill="#4a3aa7">フェーズ2: 質問（_ask_questions）</text>
+    <rect x="600" y="230" width="280" height="22" rx="4" fill="#fbe9e9"/>
+    <text x="610" y="246" fill="#e34948">フェーズ3: 削除（_exec_delete）</text>
+  </g>
+
+  <!-- 上段: 収集と比較 -->
+  <g font-size="12.5" fill="#0b0b0b">
+    <rect x="20" y="60" width="195" height="70" rx="8" fill="none" stroke="#c3c2b7" stroke-width="1.5"/>
+    <text x="117" y="84" text-anchor="middle" font-weight="600">① ファイル走査</text>
+    <text x="117" y="102" text-anchor="middle" font-size="10.5" fill="#52514e" font-family="monospace">list_files()</text>
+    <text x="117" y="118" text-anchor="middle" font-size="10.5" fill="#898781">隠しファイル/ディレクトリは除外</text>
+
+    <rect x="245" y="60" width="195" height="70" rx="8" fill="none" stroke="#c3c2b7" stroke-width="1.5"/>
+    <text x="342" y="84" text-anchor="middle" font-weight="600">② mtime 昇順ソート</text>
+    <text x="342" y="102" text-anchor="middle" font-size="10.5" fill="#52514e" font-family="monospace">sort_files_by_mtime()</text>
+    <text x="342" y="118" text-anchor="middle" font-size="10.5" fill="#898781">stat 失敗は 0（最古扱い）</text>
+
+    <rect x="470" y="60" width="195" height="70" rx="8" fill="none" stroke="#c3c2b7" stroke-width="1.5"/>
+    <text x="567" y="84" text-anchor="middle" font-weight="600">③ 前処理</text>
+    <text x="567" y="102" text-anchor="middle" font-size="10.5" fill="#52514e" font-family="monospace">precompute_file_info()</text>
+    <text x="567" y="118" text-anchor="middle" font-size="10.5" fill="#898781">stat + 名前の正規化を事前計算</text>
+
+    <rect x="695" y="60" width="185" height="70" rx="8" fill="#e2f5ee" stroke="#1baf7a" stroke-width="2"/>
+    <text x="787" y="84" text-anchor="middle" font-weight="600">④ 並列比較</text>
+    <text x="787" y="102" text-anchor="middle" font-size="9.5" fill="#52514e" font-family="monospace">find_dup_candidates_parallel()</text>
+    <text x="787" y="118" text-anchor="middle" font-size="10.5" fill="#898781">最大8ワーカー・同一dir内のみ</text>
+  </g>
+  <g stroke="#898781" stroke-width="1.5" fill="none" marker-end="url(#arr)">
+    <line x1="215" y1="95" x2="241" y2="95"/>
+    <line x1="440" y1="95" x2="466" y2="95"/>
+    <line x1="665" y1="95" x2="691" y2="95"/>
+  </g>
+
+  <!-- キャッシュ照合 -->
+  <rect x="695" y="160" width="185" height="52" rx="8" fill="none" stroke="#c3c2b7" stroke-width="1.5"/>
+  <text x="787" y="181" text-anchor="middle" font-size="12.5" font-weight="600" fill="#0b0b0b">⑤ キャッシュ照合</text>
+  <text x="787" y="199" text-anchor="middle" font-size="10.5" fill="#52514e" font-family="monospace">load_cached_pairs()</text>
+  <line x1="787" y1="130" x2="787" y2="156" stroke="#898781" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- DB シリンダー -->
+  <g>
+    <path d="M 60 300 a 55 12 0 0 0 110 0 v 60 a 55 12 0 0 1 -110 0 z" fill="#e8f1fb" stroke="#2a78d6" stroke-width="1.5"/>
+    <ellipse cx="115" cy="300" rx="55" ry="12" fill="#e8f1fb" stroke="#2a78d6" stroke-width="1.5"/>
+    <text x="115" y="336" text-anchor="middle" font-size="11" font-weight="600" fill="#0b0b0b">.dupdel_cache.db</text>
+    <text x="115" y="352" text-anchor="middle" font-size="9.5" fill="#52514e">skipped_pairs テーブル</text>
+  </g>
+  <!-- DB → 照合 -->
+  <path d="M 130 288 C 200 200, 500 186, 691 186" stroke="#2a78d6" stroke-width="1.5" fill="none" stroke-dasharray="5 3" marker-end="url(#arrb)"/>
+  <text x="400" y="172" text-anchor="middle" font-size="10.5" fill="#2a78d6">回答済み（n）のペアは質問リストから除外</text>
+
+  <!-- 質問ステージ -->
+  <rect x="250" y="280" width="330" height="90" rx="8" fill="none" stroke="#4a3aa7" stroke-width="2"/>
+  <text x="415" y="304" text-anchor="middle" font-size="12.5" font-weight="600" fill="#0b0b0b">⑥ 1件ずつ質問「同一？ [y/n/q]」</text>
+  <g font-size="11" fill="#52514e">
+    <text x="270" y="326">y … 削除候補に追加</text>
+    <text x="270" y="343">n … スキップ（即座に cache_pair() で保存）</text>
+    <text x="270" y="360">q … 質問を打ち切り削除確認へ</text>
+  </g>
+  <path d="M 787 216 C 787 250, 700 268, 584 292" stroke="#898781" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+  <!-- n → DB -->
+  <path d="M 246 340 C 220 340, 200 336, 174 332" stroke="#2a78d6" stroke-width="1.5" fill="none" marker-end="url(#arrb)"/>
+  <text x="210" y="322" text-anchor="middle" font-size="10" fill="#2a78d6">即保存</text>
+
+  <!-- 削除ステージ -->
+  <rect x="620" y="280" width="260" height="90" rx="8" fill="none" stroke="#e34948" stroke-width="2"/>
+  <text x="750" y="304" text-anchor="middle" font-size="12.5" font-weight="600" fill="#0b0b0b">⑦ 削除確認「[y/n/a]」</text>
+  <g font-size="11" fill="#52514e">
+    <text x="640" y="326">y … 新しい方をゴミ箱へ移動</text>
+    <text x="640" y="343">a … 以降すべて削除</text>
+    <text x="640" y="360">n … このペアは削除しない</text>
+  </g>
+  <line x1="580" y1="325" x2="616" y2="325" stroke="#898781" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ゴミ箱 -->
+  <rect x="620" y="400" width="260" height="50" rx="8" fill="#fbe9e9" stroke="#e34948" stroke-width="1.5"/>
+  <text x="750" y="421" text-anchor="middle" font-size="12" font-weight="600" fill="#0b0b0b">🗑️ TRASH_DIR（/storage/.recycle）</text>
+  <text x="750" y="439" text-anchor="middle" font-size="10.5" fill="#52514e">同名なら「名前 (1).拡張子」と連番付与</text>
+  <line x1="750" y1="370" x2="750" y2="396" stroke="#898781" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="770" y="388" font-size="10.5" fill="#52514e" font-family="monospace">shutil.move()</text>
+</svg>

@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 400" font-family="-apple-system, 'Segoe UI', 'Hiragino Sans', 'Noto Sans CJK JP', sans-serif">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#898781"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="900" height="400" fill="#fcfcfb"/>
+
+  <!-- 入力 -->
+  <rect x="30" y="30" width="380" height="70" rx="8" fill="#e8f1fb" stroke="#2a78d6" stroke-width="1.5"/>
+  <text x="220" y="55" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0b0b0b">SequenceMatcher(古い名前, 新しい名前)</text>
+  <text x="220" y="76" text-anchor="middle" font-size="11" fill="#52514e" font-family="monospace">get_opcodes() → equal / delete / replace / insert</text>
+
+  <!-- build_diff_text -->
+  <rect x="480" y="30" width="390" height="70" rx="8" fill="none" stroke="#c3c2b7" stroke-width="1.5"/>
+  <text x="675" y="55" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0b0b0b">build_diff_text(text, sm, mode, max_width)</text>
+  <text x="675" y="76" text-anchor="middle" font-size="11" fill="#52514e">mode 0 = 古い側 ／ mode 1 = 新しい側 を1文字ずつ着色</text>
+  <line x1="410" y1="65" x2="476" y2="65" stroke="#898781" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- 着色ルール表 -->
+  <g font-size="12">
+    <text x="30" y="150" font-size="13" font-weight="700" fill="#0b0b0b">着色ルール（適用順）</text>
+    <rect x="30" y="165" width="840" height="30" fill="#f0efec"/>
+    <text x="45" y="185" fill="#0b0b0b">equal（一致部分）</text>
+    <text x="500" y="185" fill="#52514e">そのまま表示</text>
+
+    <rect x="30" y="195" width="840" height="30" fill="#fcfcfb"/>
+    <text x="45" y="215" fill="#0b0b0b">IGNORE_PAT に含まれる文字（数字・空白・[] など）</text>
+    <text x="500" y="215" fill="#6c6c6c">グレー（COLOR_DIM）で減光</text>
+
+    <rect x="30" y="225" width="840" height="30" fill="#f0efec"/>
+    <text x="45" y="245" fill="#0b0b0b">delete（古い側にのみ存在）</text>
+    <text x="500" y="245" fill="#d7568c">ライトピンク（COLOR_DIFF_DELETE）</text>
+
+    <rect x="30" y="255" width="840" height="30" fill="#fcfcfb"/>
+    <text x="45" y="275" fill="#0b0b0b">replace（置換された部分）</text>
+    <text x="500" y="275" fill="#3fa53f">ペールグリーン（COLOR_DIFF_REPLACE）</text>
+
+    <rect x="30" y="285" width="840" height="30" fill="#f0efec"/>
+    <text x="45" y="305" fill="#0b0b0b">insert（新しい側にのみ存在）</text>
+    <text x="500" y="305" fill="#4a7cc0">ライトスカイブルー（COLOR_DIFF_INSERT）</text>
+  </g>
+
+  <!-- 幅制御の注記 -->
+  <rect x="30" y="335" width="840" height="46" rx="8" fill="none" stroke="#c3c2b7" stroke-dasharray="4 3"/>
+  <text x="50" y="354" font-size="11.5" fill="#0b0b0b" font-weight="600">表示幅の制御（get_visible_width / truncate_to_width）</text>
+  <text x="50" y="372" font-size="11" fill="#52514e">East Asian Width で全角=2・半角=1 として幅を積算し、端末幅を超える分は「...」で省略（ANSI エスケープは幅に数えない）</text>
+</svg>

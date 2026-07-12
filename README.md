@@ -95,8 +95,12 @@ src/
     ├── constants.py    # 定数・型定義
     ├── text.py         # テキスト表示ユーティリティ
     ├── core.py         # ファイル比較コアロジック
+    ├── cache.py        # スキップキャッシュ（SQLite）
     └── ui.py           # UI/インタラクション
 ```
+
+アーキテクチャの詳細（モジュール構成・処理フロー・類似判定・並列処理などの図解）は
+[doc/architecture.md](doc/architecture.md) を参照してください。
 
 ## 📝 ライセンス
 

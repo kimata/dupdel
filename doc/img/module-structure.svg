@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 560" font-family="-apple-system, 'Segoe UI', 'Hiragino Sans', 'Noto Sans CJK JP', sans-serif">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#898781"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="900" height="560" fill="#fcfcfb"/>
+
+  <!-- レイヤーラベル -->
+  <g font-size="11.5" fill="#898781" font-weight="600">
+    <text x="20" y="64">エントリポイント</text>
+    <text x="20" y="150">公開 API</text>
+    <text x="20" y="255">UI 層</text>
+    <text x="20" y="390">ロジック層</text>
+    <text x="20" y="500">基盤</text>
+  </g>
+
+  <!-- app.py -->
+  <rect x="330" y="30" width="240" height="52" rx="8" fill="#e8f1fb" stroke="#2a78d6" stroke-width="1.5"/>
+  <text x="450" y="52" text-anchor="middle" font-size="14" font-weight="700" fill="#0b0b0b">app.py</text>
+  <text x="450" y="70" text-anchor="middle" font-size="11" fill="#52514e">CLI 引数解析（docopt）</text>
+
+  <!-- __init__.py -->
+  <rect x="330" y="118" width="240" height="52" rx="8" fill="#f0efec" stroke="#c3c2b7" stroke-width="1.5"/>
+  <text x="450" y="140" text-anchor="middle" font-size="14" font-weight="700" fill="#0b0b0b">dupdel/__init__.py</text>
+  <text x="450" y="158" text-anchor="middle" font-size="11" fill="#52514e">公開 API の再エクスポート</text>
+
+  <!-- ui.py -->
+  <rect x="300" y="220" width="300" height="60" rx="8" fill="#edeaf9" stroke="#4a3aa7" stroke-width="1.5"/>
+  <text x="450" y="244" text-anchor="middle" font-size="14" font-weight="700" fill="#0b0b0b">ui.py</text>
+  <text x="450" y="264" text-anchor="middle" font-size="11" fill="#52514e">対話処理・進捗表示・削除実行・統計モード</text>
+
+  <!-- core / cache / text -->
+  <rect x="90" y="350" width="240" height="60" rx="8" fill="#e2f5ee" stroke="#1baf7a" stroke-width="1.5"/>
+  <text x="210" y="374" text-anchor="middle" font-size="14" font-weight="700" fill="#0b0b0b">core.py</text>
+  <text x="210" y="394" text-anchor="middle" font-size="11" fill="#52514e">類似判定・並列比較</text>
+
+  <rect x="380" y="350" width="220" height="60" rx="8" fill="#e2f5ee" stroke="#1baf7a" stroke-width="1.5"/>
+  <text x="490" y="374" text-anchor="middle" font-size="14" font-weight="700" fill="#0b0b0b">cache.py</text>
+  <text x="490" y="394" text-anchor="middle" font-size="11" fill="#52514e">スキップ済みペアの永続化</text>
+
+  <rect x="650" y="350" width="220" height="60" rx="8" fill="#e2f5ee" stroke="#1baf7a" stroke-width="1.5"/>
+  <text x="760" y="374" text-anchor="middle" font-size="14" font-weight="700" fill="#0b0b0b">text.py</text>
+  <text x="760" y="394" text-anchor="middle" font-size="11" fill="#52514e">全角対応の幅計算・差分着色</text>
+
+  <!-- constants.py -->
+  <rect x="300" y="470" width="300" height="60" rx="8" fill="#fdf5df" stroke="#eda100" stroke-width="1.5"/>
+  <text x="450" y="494" text-anchor="middle" font-size="14" font-weight="700" fill="#0b0b0b">constants.py</text>
+  <text x="450" y="514" text-anchor="middle" font-size="11" fill="#52514e">閾値・色・型定義・shutdown_event</text>
+
+  <!-- 依存の矢印 -->
+  <g stroke="#898781" stroke-width="1.5" fill="none" marker-end="url(#arr)">
+    <line x1="450" y1="82" x2="450" y2="114"/>
+    <line x1="450" y1="170" x2="450" y2="216"/>
+    <!-- ui → core / cache / text -->
+    <line x1="340" y1="280" x2="230" y2="346"/>
+    <line x1="470" y1="280" x2="488" y2="346"/>
+    <line x1="560" y1="280" x2="740" y2="346"/>
+    <!-- ui → constants（cache と text の間を通す） -->
+    <path d="M 560 280 C 625 330, 632 440, 596 486" />
+    <!-- core → constants, text → constants -->
+    <line x1="250" y1="410" x2="360" y2="472"/>
+    <line x1="720" y1="410" x2="602" y2="480"/>
+  </g>
+
+  <!-- 外部ライブラリ -->
+  <g font-size="10.5" fill="#52514e">
+    <rect x="640" y="36" width="150" height="40" rx="6" fill="none" stroke="#c3c2b7" stroke-dasharray="4 3"/>
+    <text x="715" y="53" text-anchor="middle">外部: docopt</text>
+    <text x="715" y="68" text-anchor="middle" fill="#898781">CLI 定義</text>
+    <rect x="640" y="226" width="150" height="40" rx="6" fill="none" stroke="#c3c2b7" stroke-dasharray="4 3"/>
+    <text x="715" y="243" text-anchor="middle">外部: enlighten</text>
+    <text x="715" y="258" text-anchor="middle" fill="#898781">プログレスバー</text>
+    <rect x="90" y="226" width="170" height="40" rx="6" fill="none" stroke="#c3c2b7" stroke-dasharray="4 3"/>
+    <text x="175" y="243" text-anchor="middle">標準: difflib.SequenceMatcher</text>
+    <text x="175" y="258" text-anchor="middle" fill="#898781">類似度計算（core / text でも使用）</text>
+    <rect x="380" y="424" width="220" height="18" rx="4" fill="none" stroke="none"/>
+    <text x="490" y="436" text-anchor="middle" fill="#898781">標準: sqlite3（.dupdel_cache.db）</text>
+    <text x="210" y="436" text-anchor="middle" fill="#898781">標準: concurrent.futures / signal</text>
+  </g>
+  <g stroke="#c3c2b7" stroke-width="1" stroke-dasharray="4 3" fill="none" marker-end="url(#arr)">
+    <line x1="636" y1="56" x2="574" y2="56"/>
+    <line x1="636" y1="246" x2="604" y2="246"/>
+    <line x1="264" y1="246" x2="296" y2="246"/>
+  </g>
+</svg>
