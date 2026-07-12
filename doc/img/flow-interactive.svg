@@ -65,12 +65,13 @@
   <text x="400" y="172" text-anchor="middle" font-size="10.5" fill="#2a78d6">回答済み（n）のペアは質問リストから除外</text>
 
   <!-- 質問ステージ -->
-  <rect x="250" y="280" width="330" height="90" rx="8" fill="none" stroke="#4a3aa7" stroke-width="2"/>
-  <text x="415" y="304" text-anchor="middle" font-size="12.5" font-weight="600" fill="#0b0b0b">⑥ 1件ずつ質問「同一？ [y/n/q]」</text>
+  <rect x="250" y="276" width="330" height="104" rx="8" fill="none" stroke="#4a3aa7" stroke-width="2"/>
+  <text x="415" y="298" text-anchor="middle" font-size="12.5" font-weight="600" fill="#0b0b0b">⑥ 1件ずつ質問「同一？ [y/n/N/q]」</text>
   <g font-size="11" fill="#52514e">
-    <text x="270" y="326">y … 削除候補に追加</text>
-    <text x="270" y="343">n … スキップ（即座に cache_pair() で保存）</text>
-    <text x="270" y="360">q … 質問を打ち切り削除確認へ</text>
+    <text x="270" y="318">y … 削除候補に追加</text>
+    <text x="270" y="334">n … スキップ（即座に cache_pair() で保存）</text>
+    <text x="270" y="350">N … 同じフォルダの残りをスキップ（今回のみ）</text>
+    <text x="270" y="366">q … 質問を打ち切り削除確認へ</text>
   </g>
   <path d="M 787 216 C 787 250, 700 268, 584 292" stroke="#898781" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
   <!-- n → DB -->

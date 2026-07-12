@@ -43,8 +43,12 @@ from .text import (
 )
 
 
-def _blinking_input(prompt: str = "") -> str:
-    """点滅するアンダースコアカーソル付きで入力を待つ"""
+def _blinking_input(prompt: str = "", *, keep_case: bool = False) -> str:
+    """点滅するアンダースコアカーソル付きで入力を待つ
+
+    keep_case=True の場合は大文字小文字を保持する（「N」のような
+    大文字コマンドを区別したい呼び出し元で使う）。
+    """
     # プロンプトと点滅する _ を表示
     sys.stdout.write(f"{prompt}{BLINK_ON}_{COLOR_RESET}")
     sys.stdout.flush()
@@ -61,7 +65,8 @@ def _blinking_input(prompt: str = "") -> str:
     sys.stdout.flush()
 
     # 入力を取得（ユーザーの入力が _ を上書きする）
-    return input().strip().lower()
+    ans = input().strip()
+    return ans if keep_case else ans.lower()
 
 
 def _print_dup_cand(dup_cand: DupCand, index: int, total: int) -> None:
@@ -218,6 +223,7 @@ def _list_dup_cand(dir_path: str, manager: enlighten.Manager) -> list[DupCand]:
     )
 
     dup_cand_list: list[DupCand] = []
+    question_counter_closed = False
 
     def progress_callback(comparisons: int, found: int) -> None:
         """並列処理からの進捗コールバック"""
@@ -278,14 +284,16 @@ def _list_dup_cand(dir_path: str, manager: enlighten.Manager) -> list[DupCand]:
         tool_status.update(status="🤔 削除して良いか確認お願いします")
         with contextlib.suppress(ValueError, RuntimeError):
             question_counter.close()
+        question_counter_closed = True
         _ask_questions(pending_questions, dup_cand_list, delete_counter, manager)
 
     finally:
         tool_status.close()
         dir_status.close()
         compare_bar.close()
-        with contextlib.suppress(ValueError, RuntimeError):
-            question_counter.close()
+        if not question_counter_closed:
+            with contextlib.suppress(ValueError, RuntimeError):
+                question_counter.close()
         delete_counter.close()
 
     return dup_cand_list
@@ -301,6 +309,7 @@ def _ask_questions(
 
     Ctrl-C で中断確認を行い、「継続」なら同じ質問を再表示する。
     「n」= 重複ではない、は確定情報なので即座にキャッシュへ保存する。
+    「N」= 同じフォルダの残りの質問をすべてスキップする（今回の実行のみ）。
     """
     qa_bar = manager.counter(
         total=len(pending_questions),
@@ -311,18 +320,17 @@ def _ask_questions(
 
     try:
         index = 0
-        total = len(pending_questions)
-        while index < total:
+        while index < len(pending_questions):
             if shutdown_event.is_set():
                 break
 
             dup_cand = pending_questions[index]
-            _print_dup_cand(dup_cand, index + 1, total)
+            _print_dup_cand(dup_cand, index + 1, len(pending_questions))
 
             print()  # ステータスバーとの間に空行
-            prompt = f"{COLOR_TITLE}🤔 同一？(後者が削除候補) [y/n/q]: {COLOR_RESET}"
+            prompt = f"{COLOR_TITLE}🤔 同一？(後者が削除候補) [y/n/N/q]: {COLOR_RESET}"
             try:
-                ans = _blinking_input(prompt)
+                ans = _blinking_input(prompt, keep_case=True)
             except (KeyboardInterrupt, EOFError):
                 if _confirm_quit():
                     shutdown_event.set()
@@ -330,8 +338,24 @@ def _ask_questions(
                 print()  # 同じ質問を再表示して継続
                 continue
 
+            if ans == "N":
+                # 同じフォルダの残りの質問（現在の質問を含む）をすべてスキップ。
+                # キャッシュには保存しないため、次回の実行では再び質問される
+                dir_path = str(Path(dup_cand[0].path).parent)
+                kept = [
+                    cand for cand in pending_questions[index:] if str(Path(cand[0].path).parent) != dir_path
+                ]
+                skipped_count = len(pending_questions) - index - len(kept)
+                pending_questions[index:] = kept
+                qa_bar.total = len(pending_questions)
+                qa_bar.refresh()
+                print(f"{COLOR_DIM}⏭️  フォルダごとスキップ: {dir_path} ({skipped_count} 件){COLOR_RESET}")
+                print()  # ステータスバーとの間に空行
+                continue
+
             index += 1
             qa_bar.update()
+            ans = ans.lower()
             if ans == "y":
                 dup_cand_list.append(dup_cand)
                 delete_counter.count = len(dup_cand_list)

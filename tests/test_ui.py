@@ -36,6 +36,16 @@ class TestBlinkingInput:
             result = _blinking_input("")
             assert result == "test"
 
+    def test_lowercase_by_default(self):
+        """デフォルトでは小文字に正規化される"""
+        with patch("builtins.input", return_value="  Y  "):
+            assert _blinking_input("prompt: ") == "y"
+
+    def test_keep_case(self):
+        """keep_case=True では大文字小文字を保持する"""
+        with patch("builtins.input", return_value="  N  "):
+            assert _blinking_input("prompt: ", keep_case=True) == "N"
+
 
 class TestPrintDupCand:
     """print_dup_cand のテスト"""
@@ -574,6 +584,43 @@ class TestListDupCand:
                 result = _list_dup_cand(tmpdir, manager)
                 assert len(result) == 0
 
+    def test_folder_skip_with_capital_n(self):
+        """「N」で同じフォルダの残りの質問がすべてスキップされる（今回の実行のみ）"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # dir1: 類似ファイル3つ → 3ペア、dir2: 類似ファイル2つ → 1ペア
+            dir1 = Path(tmpdir) / "dir1"
+            dir2 = Path(tmpdir) / "dir2"
+            dir1.mkdir()
+            dir2.mkdir()
+            for i in range(3):
+                (dir1 / f"番組名_20010{i}.ts").write_text("x" * 1000)
+            for i in range(2):
+                (dir2 / f"別番組_20020{i}.ts").write_text("x" * 1000)
+
+            manager = MagicMock()
+            status_bar = MagicMock()
+            counter = MagicMock()
+            counter.count = 0
+            manager.status_bar.return_value = status_bar
+            manager.counter.return_value = counter
+
+            # 質問はパス順なので dir1 のペアが先。「N」で dir1 の3ペアを全部飛ばし、
+            # 続く dir2 のペアには「y」と答える
+            answers = iter(["N", "y"])
+
+            def fake_input(prompt, **kwargs):
+                return next(answers)
+
+            with patch("dupdel.ui._blinking_input", side_effect=fake_input):
+                with patch("dupdel.ui.cache_pair") as mock_cache_pair:
+                    result = _list_dup_cand(tmpdir, manager)
+
+            # dir2 のペアだけが削除候補になる
+            assert len(result) == 1
+            assert Path(result[0][0].path).parent == dir2
+            # 「N」のスキップはキャッシュに保存されない（今回の実行のみ）
+            mock_cache_pair.assert_not_called()
+
     def test_no_valid_comparisons(self):
         """有効な比較対象がない（異なるディレクトリのファイル）"""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -633,7 +680,7 @@ class TestListDupCand:
 
             call_count = [0]
 
-            def input_with_shutdown(prompt):
+            def input_with_shutdown(prompt, **kwargs):
                 call_count[0] += 1
                 if call_count[0] >= 1:
                     # 1回目の回答後にshutdown_eventをセット
@@ -663,7 +710,7 @@ class TestListDupCand:
 
             call_count = [0]
 
-            def input_with_interrupt(prompt):
+            def input_with_interrupt(prompt, **kwargs):
                 call_count[0] += 1
                 if call_count[0] == 1:
                     raise KeyboardInterrupt
@@ -731,7 +778,7 @@ class TestListDupCand:
                 shutdown_event.clear()
 
     def test_question_counter_close_exception(self):
-        """question_counter.close()が例外を投げる場合"""
+        """question_counter.close()が例外を投げても処理が継続する"""
         with tempfile.TemporaryDirectory() as tmpdir:
             # 類似したファイル名を作成
             (Path(tmpdir) / "番組名_200101.ts").write_text("x" * 1000)
@@ -753,15 +800,7 @@ class TestListDupCand:
                 # question_counterは4番目に作成される（counter, progress_bar, compare_bar, question_counter）
                 if counter_call_count[0] == 4:
                     question_counter_mock = mock
-                    # question_counterのclose()は2回呼ばれる（フェーズ2開始時とfinally）
-                    close_call_count = [0]
-
-                    def close_with_exception():
-                        close_call_count[0] += 1
-                        if close_call_count[0] == 2:
-                            raise RuntimeError("Already closed")
-
-                    mock.close.side_effect = close_with_exception
+                    mock.close.side_effect = RuntimeError("Already closed")
                 return mock
 
             manager.counter.side_effect = create_counter
@@ -769,6 +808,10 @@ class TestListDupCand:
             with patch("dupdel.ui._blinking_input", return_value="y"):
                 result = _list_dup_cand(tmpdir, manager)
                 assert len(result) == 1
+
+            # close はフェーズ2開始時の1回だけ呼ばれる（二重closeしない）
+            assert question_counter_mock is not None
+            question_counter_mock.close.assert_called_once()
 
 
 class TestRunStatsMode:
