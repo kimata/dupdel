@@ -51,14 +51,6 @@ DupCand = tuple[FileInfo, FileInfo]  # (古いファイル, 新しいファイ�
 
 
 @dataclass
-class ListDupCandResult:
-    """重複候補リストと処理結果"""
-
-    candidates: list[DupCand]
-    skipped_pairs: list[tuple[str, str]]
-
-
-@dataclass
 class DirStats:
     """ディレクトリ統計情報"""
 

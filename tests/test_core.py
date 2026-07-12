@@ -15,6 +15,7 @@ from dupdel.core import (
     _get_mtime_safe,
     _has_episode_number_diff,
     _has_zengo_diff,
+    _normalize_name,
     compare_pair,
     count_valid_comparisons,
     find_dup_candidates_parallel,
@@ -84,6 +85,30 @@ class TestHasZengoDiff:
     def test_no_zengo_diff(self):
         """前後の差分なし"""
         assert _has_zengo_diff("番組名 第1話", "番組名 第2話") is False
+
+    def test_gozen_gogo_is_not_zengo(self):
+        """「午前」「午後」は前編/後編ではない（時刻表現）"""
+        assert _has_zengo_diff("番組名(午前の部)_240101.ts", "番組名(午後の部)_240108.ts") is False
+
+    def test_gozen_gogo_short(self):
+        """「午前」「午後」のみの差分"""
+        assert _has_zengo_diff("番組名 午前", "番組名 午後") is False
+
+
+class TestNormalizeName:
+    """_normalize_name のテスト"""
+
+    def test_normal_name(self):
+        """通常の名前は IGNORE_PAT が除去される"""
+        assert _normalize_name("番組名 第1話.ts") == "番組名第話.ts"
+
+    def test_digit_only_name_falls_back(self):
+        """数字のみの名前は正規化で情報が消えるため、生の名前をそのまま使う"""
+        assert _normalize_name("20240101.ts") == "20240101.ts"
+
+    def test_short_normalized_falls_back(self):
+        """正規化後が短すぎる場合も生の名前を使う"""
+        assert _normalize_name("123 456.ts") == "123 456.ts"
 
 
 class TestHasEpisodeNumberDiff:
@@ -539,6 +564,34 @@ class TestComparePair:
         result = compare_pair(info1, info2, 0.85)
         # 空文字の場合でも比較は行われる
         assert result is not None
+
+
+class TestComparePairDigitOnlyNames:
+    """数字のみのファイル名の誤検出防止（precompute の正規化フォールバック経由）"""
+
+    def test_digit_only_names_not_detected(self):
+        """日付だけのファイル名同士は重複候補にならない"""
+        info1 = PrecomputedFileInfo(
+            path="/dir/20240101.ts",
+            dir_path="/dir",
+            name="20240101.ts",
+            rel_name="20240101.ts",
+            normalized=_normalize_name("20240101.ts"),
+            size=1000,
+            mtime=1000.0,
+            index=1,
+        )
+        info2 = PrecomputedFileInfo(
+            path="/dir/19991231.ts",
+            dir_path="/dir",
+            name="19991231.ts",
+            rel_name="19991231.ts",
+            normalized=_normalize_name("19991231.ts"),
+            size=1000,
+            mtime=1001.0,
+            index=2,
+        )
+        assert compare_pair(info1, info2, 0.85) is None
 
 
 class TestGetMtimeSafe:

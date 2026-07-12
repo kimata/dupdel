@@ -4,13 +4,11 @@ cache.py のユニットテスト
 """
 # ruff: noqa: S101
 
-import os
-import tempfile
-
-import pytest
+from pathlib import Path
 
 # テスト用にキャッシュDBパスを一時ディレクトリに変更
 import dupdel.cache as cache_module
+import pytest
 
 
 @pytest.fixture
@@ -28,14 +26,14 @@ class TestCacheDb:
     def test_init_cache_db(self, temp_cache_db):
         """DB初期化"""
         cache_module.init_cache_db()
-        assert os.path.exists(temp_cache_db)
+        assert Path(temp_cache_db).exists()
 
     def test_cache_pair(self, temp_cache_db):
         """ペアをキャッシュに追加"""
         cache_module.init_cache_db()
         cache_module._clear_cache()
 
-        cache_module._cache_pair("/path/to/file1.ts", "/path/to/file2.ts")
+        cache_module.cache_pair("/path/to/file1.ts", "/path/to/file2.ts")
 
         assert cache_module._get_cached_count() == 1
 
@@ -44,35 +42,26 @@ class TestCacheDb:
         cache_module.init_cache_db()
         cache_module._clear_cache()
 
-        cache_module._cache_pair("/path/to/file1.ts", "/path/to/file2.ts")
+        cache_module.cache_pair("/path/to/file1.ts", "/path/to/file2.ts")
 
-        assert (
-            cache_module.is_pair_cached("/path/to/file1.ts", "/path/to/file2.ts")
-            is True
-        )
+        assert cache_module.is_pair_cached("/path/to/file1.ts", "/path/to/file2.ts") is True
 
     def test_is_pair_cached_negative(self, temp_cache_db):
         """キャッシュ済みペアの確認（存在しない）"""
         cache_module.init_cache_db()
         cache_module._clear_cache()
 
-        assert (
-            cache_module.is_pair_cached("/path/to/file1.ts", "/path/to/file2.ts")
-            is False
-        )
+        assert cache_module.is_pair_cached("/path/to/file1.ts", "/path/to/file2.ts") is False
 
     def test_is_pair_cached_reverse_order(self, temp_cache_db):
         """逆順でもキャッシュ済みと判定される"""
         cache_module.init_cache_db()
         cache_module._clear_cache()
 
-        cache_module._cache_pair("/path/to/file1.ts", "/path/to/file2.ts")
+        cache_module.cache_pair("/path/to/file1.ts", "/path/to/file2.ts")
 
         # 逆順でも検出できる
-        assert (
-            cache_module.is_pair_cached("/path/to/file2.ts", "/path/to/file1.ts")
-            is True
-        )
+        assert cache_module.is_pair_cached("/path/to/file2.ts", "/path/to/file1.ts") is True
 
     def test_cache_pairs_bulk(self, temp_cache_db):
         """一括キャッシュ追加"""
@@ -103,7 +92,7 @@ class TestCacheDb:
         """キャッシュクリア"""
         cache_module.init_cache_db()
 
-        cache_module._cache_pair("/path/to/file1.ts", "/path/to/file2.ts")
+        cache_module.cache_pair("/path/to/file1.ts", "/path/to/file2.ts")
         assert cache_module._get_cached_count() == 1
 
         cache_module._clear_cache()
@@ -114,8 +103,34 @@ class TestCacheDb:
         cache_module.init_cache_db()
         cache_module._clear_cache()
 
-        cache_module._cache_pair("/path/to/file1.ts", "/path/to/file2.ts")
-        cache_module._cache_pair("/path/to/file1.ts", "/path/to/file2.ts")
+        cache_module.cache_pair("/path/to/file1.ts", "/path/to/file2.ts")
+        cache_module.cache_pair("/path/to/file1.ts", "/path/to/file2.ts")
 
         # 重複しても1件のまま
         assert cache_module._get_cached_count() == 1
+
+    def test_load_cached_pairs(self, temp_cache_db):
+        """キャッシュ済みペアの一括読み込み"""
+        cache_module.init_cache_db()
+        cache_module._clear_cache()
+
+        cache_module.cache_pair("/path/to/file1.ts", "/path/to/file2.ts")
+        cache_module.cache_pair("/path/to/a.ts", "/path/to/b.ts")
+
+        pairs = cache_module.load_cached_pairs()
+
+        assert len(pairs) == 2
+        assert cache_module.get_pair_key("/path/to/file2.ts", "/path/to/file1.ts") in pairs
+
+    def test_load_cached_pairs_empty(self, temp_cache_db):
+        """空のキャッシュの一括読み込み"""
+        cache_module.init_cache_db()
+        cache_module._clear_cache()
+
+        assert cache_module.load_cached_pairs() == set()
+
+    def test_get_pair_key_order_independent(self):
+        """ペアキーは引数の順序に依存しない"""
+        key1 = cache_module.get_pair_key("/path/to/a.ts", "/path/to/b.ts")
+        key2 = cache_module.get_pair_key("/path/to/b.ts", "/path/to/a.ts")
+        assert key1 == key2

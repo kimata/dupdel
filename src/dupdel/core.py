@@ -4,7 +4,8 @@ import difflib
 import multiprocessing as mp
 import os
 import re
-from collections import Counter
+import signal
+from collections import Counter, defaultdict
 from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -37,6 +38,18 @@ def count_valid_comparisons(file_infos: list[PrecomputedFileInfo]) -> int:
     return total
 
 
+def _normalize_name(name: str) -> str:
+    """比較用にファイル名を正規化する
+
+    数字や記号のみの名前（例: 日付だけのファイル名）は正規化で情報がほぼ消えてしまい、
+    無関係なファイル同士が完全一致扱いになるため、生の名前をそのまま使う。
+    """
+    normalized = re.sub(IGNORE_PAT, "", name)
+    if len(normalized) < 4:  # 正規化後に情報がほぼ残らない場合
+        return name
+    return normalized
+
+
 def precompute_file_info(
     file_path_list: list[str],
     dir_path: str,
@@ -58,7 +71,7 @@ def precompute_file_info(
                     dir_path=str(p.parent),
                     name=name,
                     rel_name=str(p.relative_to(dir_path)),
-                    normalized=re.sub(IGNORE_PAT, "", name),
+                    normalized=_normalize_name(name),
                     size=stat.st_size,
                     mtime=stat.st_mtime,
                     index=i + 1,
@@ -74,13 +87,21 @@ def precompute_file_info(
 
 
 def _has_zengo_diff(name1: str, name2: str) -> bool:
-    """「前」と「後」の差分があるかチェック"""
+    """「前」と「後」の差分（前編/後編など）があるかチェック
+
+    「午前」「午後」のような時刻表現の差分は前編/後編ではないため対象外。
+    """
     sm = difflib.SequenceMatcher(None, name1, name2)
     for tag, i1, i2, j1, j2 in sm.get_opcodes():
         if tag == "replace":
             s1 = name1[i1:i2]
             s2 = name2[j1:j2]
             if ("前" in s1 and "後" in s2) or ("後" in s1 and "前" in s2):
+                # 差分の前後1文字を含めて双方が「午前」「午後」なら時刻表現とみなす
+                ctx1 = name1[max(0, i1 - 1) : i2 + 1]
+                ctx2 = name2[max(0, j1 - 1) : j2 + 1]
+                if ("午前" in ctx1 or "午後" in ctx1) and ("午前" in ctx2 or "午後" in ctx2):
+                    continue
                 return True
     return False
 
@@ -243,40 +264,39 @@ def compare_pair(info1: PrecomputedFileInfo, info2: PrecomputedFileInfo, match_t
 
 
 # ワーカープロセス用のグローバル変数
-_worker_file_infos: list[PrecomputedFileInfo] = []
-_worker_n: int = 0
+_worker_groups: list[list[PrecomputedFileInfo]] = []
 
 
 def _init_worker(
-    file_infos: list[PrecomputedFileInfo],
+    groups: list[list[PrecomputedFileInfo]],
 ) -> None:  # pragma: no cover (別プロセスで実行)
     """ワーカープロセスの初期化（データを一度だけ転送）"""
-    global _worker_file_infos, _worker_n
-    _worker_file_infos = file_infos
-    _worker_n = len(file_infos)
+    global _worker_groups
+    # 中断はメインプロセスが制御するため、ワーカーは SIGINT を無視する
+    # （端末の Ctrl-C はプロセスグループ全体に届くため、放置するとワーカーが即死する）
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    _worker_groups = groups
 
 
 def _worker_compare_range(
-    args: tuple[int, int, float],
+    args: tuple[int, int, int, float],
 ) -> tuple[list[DupCand], int]:  # pragma: no cover (別プロセスで実行)
-    """ワーカー: 指定範囲のファイルを全後続ファイルと比較"""
-    start_idx, end_idx, match_th = args
+    """ワーカー: グループ内の指定範囲のファイルを全後続ファイルと比較"""
+    group_idx, start_idx, end_idx, match_th = args
+    infos = _worker_groups[group_idx]
+    group_size = len(infos)
     results: list[DupCand] = []
-    valid_comparison_count = 0
+    comparison_count = 0
 
     for i in range(start_idx, end_idx):
-        info1 = _worker_file_infos[i]
-        for j in range(i + 1, _worker_n):
-            info2 = _worker_file_infos[j]
-            # 同じディレクトリのファイルのみ比較
-            if info1.dir_path != info2.dir_path:
-                continue
-            valid_comparison_count += 1
-            result = compare_pair(info1, info2, match_th)
+        info1 = infos[i]
+        for j in range(i + 1, group_size):
+            comparison_count += 1
+            result = compare_pair(info1, infos[j], match_th)
             if result is not None:
                 results.append(result)
 
-    return results, valid_comparison_count
+    return results, comparison_count
 
 
 def find_dup_candidates_parallel(
@@ -284,49 +304,66 @@ def find_dup_candidates_parallel(
     progress_callback: Callable[[int, int], None],
     num_workers: int | None = None,
 ) -> list[DupCand]:
-    """並列処理で重複候補を探す"""
-    n = len(file_infos)
-    if n < 2:
+    """並列処理で重複候補を探す（同じディレクトリ内のみ比較）
+
+    Ctrl-C で中断された場合は shutdown_event をセットし、
+    それまでに見つかった候補を返す。
+    """
+    # 比較は同一ディレクトリ内のみなので、ディレクトリ毎にグループ化してから
+    # タスク分割する（ツリー全体の総当たり走査を避ける）
+    by_dir: defaultdict[str, list[PrecomputedFileInfo]] = defaultdict(list)
+    for info in file_infos:
+        by_dir[info.dir_path].append(info)
+    groups = [infos for infos in by_dir.values() if len(infos) >= 2]
+
+    total_comparisons = sum(len(g) * (len(g) - 1) // 2 for g in groups)
+    if total_comparisons == 0:
         return []
 
     if num_workers is None:
         num_workers = min(mp.cpu_count(), 8)
 
     # タスクを細かく分割（0.5%刻みで進捗更新、最低200タスク）
-    total_comparisons = n * (n - 1) // 2
     min_tasks = max(200, num_workers * 50)
-    # 1タスクあたり最大50万比較に制限（大規模データでも頻繁に更新）
-    max_comparisons_per_task = 500_000
+    # 1タスクあたりの比較数を制限（進捗更新の頻度と Ctrl-C の応答性を確保）
+    max_comparisons_per_task = 100_000
     target_per_task = min(max_comparisons_per_task, max(1, total_comparisons // min_tasks))
 
-    # 開始インデックスごとの比較数: n-1, n-2, ..., 1
-    tasks: list[tuple[int, int, float]] = []
-    current_start = 0
-    current_count = 0
-
-    for i in range(n - 1):
-        current_count += n - 1 - i
-        if current_count >= target_per_task or i == n - 2:
-            tasks.append((current_start, i + 1, MATCH_TH))
-            current_start = i + 1
-            current_count = 0
-
-    if not tasks:  # pragma: no cover (n>=2でforループが必ず実行されるため到達不可)
-        tasks.append((0, n - 1, MATCH_TH))
+    # グループ毎に、開始インデックスの範囲でタスクを切り出す
+    tasks: list[tuple[int, int, int, float]] = []
+    for group_idx, infos in enumerate(groups):
+        group_size = len(infos)
+        current_start = 0
+        current_count = 0
+        for i in range(group_size - 1):
+            current_count += group_size - 1 - i
+            if current_count >= target_per_task or i == group_size - 2:
+                tasks.append((group_idx, current_start, i + 1, MATCH_TH))
+                current_start = i + 1
+                current_count = 0
 
     all_results: list[DupCand] = []
 
+    # スキャン中の SIGINT は shutdown_event をセットするだけにする。
+    # KeyboardInterrupt 例外で Executor 内部の通信を巻き戻すと
+    # シャットダウンがデッドロックすることがあるため、例外は使わない。
+    def _on_sigint(_signum: int, _frame: object) -> None:  # pragma: no cover (シグナル経由で実行)
+        shutdown_event.set()
+
+    original_handler = signal.getsignal(signal.SIGINT)
+    signal.signal(signal.SIGINT, _on_sigint)
+
     # initializer でファイル情報を一度だけ各ワーカーに転送
-    with ProcessPoolExecutor(
+    executor = ProcessPoolExecutor(
         max_workers=num_workers,
         initializer=_init_worker,
-        initargs=(file_infos,),
-    ) as executor:
-        futures = {executor.submit(_worker_compare_range, task): task for task in tasks}
+        initargs=(groups,),
+    )
+    try:
+        futures = [executor.submit(_worker_compare_range, task) for task in tasks]
 
         for future in as_completed(futures):
             if shutdown_event.is_set():
-                executor.shutdown(wait=False, cancel_futures=True)
                 break
 
             results, comparisons = future.result()
@@ -334,12 +371,24 @@ def find_dup_candidates_parallel(
 
             # 進捗コールバック
             progress_callback(comparisons, len(results))
+    finally:
+        # shutdown は1回だけ呼ぶ（2回呼ぶと cancel_futures フラグが上書きされ、
+        # 管理スレッドが残タスクを処理し続けてしまう）
+        executor.shutdown(wait=True, cancel_futures=shutdown_event.is_set())
+        signal.signal(signal.SIGINT, original_handler)
+
+    # as_completed は完了順のため、結果の順序を決定的にする
+    all_results.sort(key=lambda cand: (cand[0].path, cand[1].path))
 
     return all_results
 
 
 def _get_mtime_safe(path: str) -> float:
-    """ファイルの更新時刻を取得（エラー時は0を返す）"""
+    """ファイルの更新時刻を取得
+
+    エラー時は 0 を返す（読めないファイルは最古扱いとなり、
+    ペア内では「古い方」= 削除候補でない側になる）。
+    """
     try:
         return Path(path).stat().st_mtime
     except OSError:

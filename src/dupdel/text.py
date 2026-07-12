@@ -6,10 +6,10 @@ import shutil
 import unicodedata
 
 from .constants import (
-    COLOR_DIM,
     COLOR_DIFF_DELETE,
     COLOR_DIFF_INSERT,
     COLOR_DIFF_REPLACE,
+    COLOR_DIM,
     COLOR_RESET,
     IGNORE_PAT,
 )
@@ -47,20 +47,26 @@ def pad_to_width(text: str, width: int, align: str = "left") -> str:
 
 
 def truncate_to_width(text: str, max_width: int) -> str:
-    """文字列を指定した表示幅に収まるように末尾を省略"""
+    """文字列を指定した表示幅に収まるように末尾を省略
+
+    ANSI エスケープシーケンスを含まない文字列専用。
+    """
     if get_visible_width(text) <= max_width:
         return text
 
-    # 末尾から削って収まるようにする
-    result = text
-    while get_visible_width(result) > max_width - 3:  # "..." の分
-        result = result[:-1]
-    return result + "..."
+    # 先頭から幅を積算し、収まる位置で打ち切る
+    result = []
+    current_width = 0
+    for char in text:
+        char_width = 2 if unicodedata.east_asian_width(char) in ("F", "W", "A") else 1
+        if current_width + char_width > max_width - 3:  # "..." の分
+            break
+        result.append(char)
+        current_width += char_width
+    return "".join(result) + "..."
 
 
-def build_diff_text(
-    text: str, sm: difflib.SequenceMatcher, mode: int, max_width: int
-) -> str:
+def build_diff_text(text: str, sm: difflib.SequenceMatcher, mode: int, max_width: int) -> str:
     """差分を着色した文字列を構築（表示幅制限付き）"""
     result = []
     current_width = 0
@@ -70,9 +76,7 @@ def build_diff_text(
 
         # この部分を追加すると幅を超えるかチェック
         for char in s:
-            char_width = (
-                2 if unicodedata.east_asian_width(char) in ("F", "W", "A") else 1
-            )
+            char_width = 2 if unicodedata.east_asian_width(char) in ("F", "W", "A") else 1
             if current_width + char_width > max_width - 3:  # "..." の分
                 result.append(f"{COLOR_RESET}...")
                 return "".join(result)

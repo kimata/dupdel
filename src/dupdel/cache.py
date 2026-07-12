@@ -14,7 +14,7 @@ def _normalize_path(path: str) -> str:
     return str(Path(path).resolve())
 
 
-def _get_pair_key(path1: str, path2: str) -> tuple[str, str]:
+def get_pair_key(path1: str, path2: str) -> tuple[str, str]:
     """2つのパスをソートして一意なペアキーを生成"""
     p1, p2 = _normalize_path(path1), _normalize_path(path2)
     return (p1, p2) if p1 < p2 else (p2, p1)
@@ -48,7 +48,7 @@ def init_cache_db() -> None:
 
 def is_pair_cached(path1: str, path2: str) -> bool:
     """ペアがキャッシュ済み（スキップ済み）かチェック"""
-    key = _get_pair_key(path1, path2)
+    key = get_pair_key(path1, path2)
     with _get_connection() as conn:
         cursor = conn.execute(
             "SELECT 1 FROM skipped_pairs WHERE path1 = ? AND path2 = ?",
@@ -57,9 +57,16 @@ def is_pair_cached(path1: str, path2: str) -> bool:
         return cursor.fetchone() is not None
 
 
-def _cache_pair(path1: str, path2: str) -> None:
+def load_cached_pairs() -> set[tuple[str, str]]:
+    """キャッシュ済みペアのキー集合を一括で読み込む（照合はメモリ上で行う）"""
+    with _get_connection() as conn:
+        cursor = conn.execute("SELECT path1, path2 FROM skipped_pairs")
+        return {(row[0], row[1]) for row in cursor.fetchall()}
+
+
+def cache_pair(path1: str, path2: str) -> None:
     """ペアをキャッシュに追加"""
-    key = _get_pair_key(path1, path2)
+    key = get_pair_key(path1, path2)
     with _get_connection() as conn:
         conn.execute(
             "INSERT OR REPLACE INTO skipped_pairs (path1, path2) VALUES (?, ?)",
@@ -72,7 +79,7 @@ def cache_pairs_bulk(pairs: list[tuple[str, str]]) -> int:
     """複数のペアを一括でキャッシュに追加"""
     if not pairs:
         return 0
-    keys = [_get_pair_key(p1, p2) for p1, p2 in pairs]
+    keys = [get_pair_key(p1, p2) for p1, p2 in pairs]
     with _get_connection() as conn:
         conn.executemany(
             "INSERT OR REPLACE INTO skipped_pairs (path1, path2) VALUES (?, ?)",
