@@ -3,7 +3,7 @@ revision = 3
 requires-python = ">=3.11"
 
 [options]
-exclude-newer = "2026-07-06T02:09:39.069518279Z"
+exclude-newer = "2026-07-06T18:24:39.406583219Z"
 exclude-newer-span = "P1W"
 
 [[package]]
@@ -631,7 +631,7 @@ dev = [
 requires-dist = [
     { name = "docopt-ng", specifier = ">=0.9.0" },
     { name = "enlighten", specifier = ">=1.14.1" },
-    { name = "my-lib", git = "https://github.com/kimata/my-py-lib?rev=57e3fe6e6ffa624b4eb046b8eae9204c8c0b89e8" },
+    { name = "my-lib", git = "https://github.com/kimata/my-py-lib?rev=738656ce5aae03d551e81dc2fad89b2466fb9626" },
 ]
 
 [package.metadata.requires-dev]
@@ -1400,7 +1400,7 @@ wheels = [
 [[package]]
 name = "my-lib"
 version = "0.2.0"
-source = { git = "https://github.com/kimata/my-py-lib?rev=57e3fe6e6ffa624b4eb046b8eae9204c8c0b89e8#57e3fe6e6ffa624b4eb046b8eae9204c8c0b89e8" }
+source = { git = "https://github.com/kimata/my-py-lib?rev=738656ce5aae03d551e81dc2fad89b2466fb9626#738656ce5aae03d551e81dc2fad89b2466fb9626" }
 dependencies = [
     { name = "coloredlogs" },
     { name = "dacite" },

@@ -11,7 +11,7 @@ requires-python = ">=3.11"
 
 dependencies = [
     "docopt-ng>=0.9.0",
-    "my-lib @ git+https://github.com/kimata/my-py-lib@57e3fe6e6ffa624b4eb046b8eae9204c8c0b89e8",
+    "my-lib @ git+https://github.com/kimata/my-py-lib@738656ce5aae03d551e81dc2fad89b2466fb9626",
     "enlighten>=1.14.1",
 ]
 
